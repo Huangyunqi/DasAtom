@@ -116,8 +116,9 @@ def get_qubits_num(gate_2q_list):
 def gates_list_to_QC(gate_list):  #default all 2-q gates circuit
     Lqubit = get_qubits_num(gate_list)
     circ = QuantumCircuit(Lqubit)
-    for cnot in gate_list:
-        circ.cx(cnot[0], cnot[1])
+    # issue: cz
+    for two_qubit_gate in gate_list:
+        circ.cz(two_qubit_gate[0], two_qubit_gate[1])
     
     dag = circuit_to_dag(circ)
     return circ, dag
