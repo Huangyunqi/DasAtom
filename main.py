@@ -55,8 +55,8 @@ if __name__ == "__main__":
 				post_map = embeddings[i+1]
 			else:
 				post_map = []
-			complete_mapping(embeddings[i], pre_map, post_map, indices, coupling_graph)
-
+			embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
+			
 	print(embeddings)
 
 
