@@ -186,15 +186,15 @@ def complete_mapping(i, embeddings, indices, coupling_graph):
 				for j in range(i+1, len(embeddings)):
 					if embeddings[j][index] != -1:
 						source = embeddings[j][index]
-					node_of_shortest = dict()
-					for node in unoccupied:
-						distance = nx.shortest_path_length(coupling_graph, source=source, target=node)
-						node_of_shortest[node] = distance
-					min_node = min(node_of_shortest, key=node_of_shortest.get)
-					cur_map[index] = min_node
-					unoccupied.remove(min_node)
-					flag = True
-					break
+						node_of_shortest = dict()
+						for node in unoccupied:
+							distance = nx.shortest_path_length(coupling_graph, source=source, target=node)
+							node_of_shortest[node] = distance
+						min_node = min(node_of_shortest, key=node_of_shortest.get)
+						cur_map[index] = min_node
+						unoccupied.remove(min_node)
+						flag = True
+						break
 		if flag == False:
 			min_node = random.choice(unoccupied)
 			cur_map[index] = min_node
