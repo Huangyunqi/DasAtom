@@ -154,23 +154,26 @@ def map2list(mapping, num_q):
 
 	return map_list
 
-def complete_mapping(cur_map, pre_map, post_map, indices, coupling_graph):
+def complete_mapping(i, embeddings, indices, coupling_graph):
+	cur_map = embeddings[i]
 	unoccupied = [value for value in coupling_graph.nodes() if value not in cur_map]
 	for index in indices:
 		flag = False
-		if pre_map:  #If pre_map is not empty
-			if pre_map[index] in unoccupied:
-				cur_map[index] = pre_map[index]
+		if i != 0:  #If pre_map is not empty
+			if embeddings[i-1][index] in unoccupied:
+				cur_map[index] = embeddings[i-1][index]
 				flag = True
 				unoccupied.remove(cur_map[index])
-		if post_map and flag == False:
-			if post_map[index] != -1 and post_map[index] in unoccupied:
-				cur_map[index] = post_map[index]
-				unoccupied.remove(cur_map[index])
-				flag = True
+		if i != len(embeddings) - 1 and flag == False:
+			for j in range(i+1, len(embeddings)):
+				if embeddings[j][index] != -1 and embeddings[j][index] in unoccupied:
+					cur_map[index] = embeddings[j][index]
+					unoccupied.remove(cur_map[index])
+					flag = True
+					break
 		if flag == False:
-			if pre_map:
-				source = pre_map[index]
+			if i != 0:
+				source = embeddings[i-1][index]
 				node_of_shortest = dict()
 				for node in unoccupied:
 					distance = nx.shortest_path_length(coupling_graph, source=source, target=node)
@@ -178,16 +181,22 @@ def complete_mapping(cur_map, pre_map, post_map, indices, coupling_graph):
 				min_node = min(node_of_shortest, key=node_of_shortest.get)
 				cur_map[index] = min_node
 				unoccupied.remove(min_node)
-			elif post_map:
-				source = post_map[index]
-				node_of_shortest = dict()
-				for node in unoccupied:
-					distance = nx.shortest_path_length(coupling_graph, source=source, target=node)
-					node_of_shortest[node] = distance
-				min_node = min(node_of_shortest, key=node_of_shortest.get)
-				cur_map[index] = min_node
-				unoccupied.remove(min_node)
-			else:
-				min_node = random.choice(unoccupied)
-				cur_map[index] = min_node
-				unoccupied.remove(min_node)
+				flag = True
+			elif i != len(embeddings) - 1:
+				for j in range(i+1, len(embeddings)):
+					if embeddings[j][index] != -1:
+						source = embeddings[j][index]
+						node_of_shortest = dict()
+						for node in unoccupied:
+							distance = nx.shortest_path_length(coupling_graph, source=source, target=node)
+							node_of_shortest[node] = distance
+						min_node = min(node_of_shortest, key=node_of_shortest.get)
+						cur_map[index] = min_node
+						unoccupied.remove(min_node)
+						flag = True
+						break
+		if flag == False:
+			min_node = random.choice(unoccupied)
+			cur_map[index] = min_node
+			unoccupied.remove(min_node)
+	return cur_map
