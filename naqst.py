@@ -8,6 +8,7 @@ from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
 
 from vfsexp import Vf 
+import copy
 
 def qubits_num(Circuit): #Circuit: gates list 
 	num = max(max(gate) for gate in Circuit)
@@ -200,3 +201,103 @@ def complete_mapping(i, embeddings, indices, coupling_graph):
 			cur_map[index] = min_node
 			unoccupied.remove(min_node)
 	return cur_map
+
+from networkx import maximal_independent_set, Graph
+
+def compatible_2D(a: list[int], b: list[int]) -> bool:
+    assert len(a) == 4 and len(b) == 4, "Both arguments must be lists with exactly four elements."
+
+    if a[0] == b[0] and a[1] != b[1]:
+        return False
+    if a[1] == b[1] and a[0] != b[0]:
+        return False
+    if a[0] < b[0] and a[1] >= b[1]:
+        return False
+    if a[0] > b[0] and a[1] <= b[1]:
+        return False
+
+    if a[2] == b[2] and a[3] != b[3]:
+        return False
+    if a[3] == b[3] and a[2] != b[2]:
+        return False
+    if a[2] < b[2] and a[3] >= b[3]:
+        return False
+    if a[2] > b[2] and a[3] <= b[3]:
+        return False
+
+    return True
+def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> list[int]:
+    # assum the vertices are sorted based on qubit distance
+    is_node_conflict = [False for _ in range(n)]
+    node_neighbors = {i: [] for i in range(n)}
+    for edge in edges:
+        node_neighbors[edge[0]].append(edge[1])
+        node_neighbors[edge[1]].append(edge[0])
+    result = []
+    for i in nodes:
+        if is_node_conflict[i]:
+            continue
+        else:
+            result.append(i)
+            for j in node_neighbors[i]:
+                is_node_conflict[j] = True
+    return result
+
+def maximalis_solve(n, edges):
+    G = Graph()
+    for i in range(n):
+        G.add_node(i)
+    for edge in edges:
+        G.add_edge(edge[0], edge[1])
+    result = maximal_independent_set(G, seed=0) 
+    return result
+
+def get_movement(current_map:list,next_map:list,window_size = None)-> map:
+    # example: current_map = [(1, 1), (0, 1), (1, 0), (0, 0), (1, 2)]
+    # next_map = [(1, 1), (0, 0), (2, 2), (0, 1), (1, 2)]
+    movements = {}
+    # Determine movements of qubits
+    for qubit, current_position in enumerate(current_map):
+        next_position = next_map[qubit]
+        if current_position != next_position:
+            move_details = current_position + next_position
+            movements[qubit] = move_details
+    return movements
+
+def solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,layer):
+    # print(f'Movements: {movements}')
+    # print(f'Violations: {violations}')
+    if routing_strategy == "maximalis":
+        resolution_order = maximalis_solve(sorted_keys, violations)
+    else:
+        resolution_order = maximalis_solve_sort(num_q, violations,sorted_keys)
+    print(f'Resolution Order: {resolution_order}')
+    
+    layer = copy.deepcopy(layer)
+    for qubit in resolution_order:
+        sorted_keys.remove(qubit)
+        
+        move = movements[qubit]
+        print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        for qubit_ in layer["qubits"]:
+            if qubit_["id"] == qubit:
+                qubit_["a"] = 1
+        
+        # Remove resolved violations
+        violations = [v for v in violations if qubit not in v]
+        del movements[qubit]
+    
+    return layer,movements,violations
+
+def map_to_layer(map:list)-> map:
+    return {
+        "qubits": [{
+            "id": i,
+            "a": 0,
+            "x": map[i][0],
+            "y": map[i][1],
+            "c": map[i][0],
+            "r": map[i][1],
+        } for i in range(len(map))],
+        "gates": []
+    }

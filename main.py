@@ -58,9 +58,59 @@ if __name__ == "__main__":
 			embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
 			
 	print(embeddings)
+	# TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
+    
+	window = False
+	window_size = 1000
+	routing_strategy = "maximalis"
+	layers = []
+	layers.append(map_to_layer(embeddings[0]))
+	for i in range(len(embeddings) - 1):
+		current_map = embeddings[i]
+		next_map = embeddings[i + 1]
+		next_layer = map_to_layer(next_map)
+		
+		last_layer = copy.deepcopy(layers[-1])
+		movements = get_movement(current_map,next_map)
+		# Sort movements by distance in descending order
+		sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
+		# print(f'sorted_keys:{sorted_keys}')
+		
+		# Check for violations
+		violations = []
+		for i in range(len(sorted_keys)):
+			for j in range(i + 1, len(sorted_keys)):
+				if not compatible_2D(movements[sorted_keys[i]], movements[sorted_keys[j]]):
+					violations.append((sorted_keys[i], sorted_keys[j]))
 
-
-   	#TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
+		# print(f'Violations: {violations}')
+		
+		# Resolve violations
+		while violations:
+			new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
+			layers.append(new_layer)
+			for i in range(num_q):
+				if last_layer["qubits"][i]["a"] == 1:
+					last_layer["qubits"][i] = next_layer
+				
+		if movements:
+			for qubit in movements:
+				move = movements[qubit]
+				for qubit_ in last_layer["qubits"]:
+					if qubit_["id"] == qubit:
+						qubit_["a"] = 1
+			layers.append(last_layer)
+		layers.append(next_layer)
+		
+				
+	data = {
+		# "runtime": float(time.time() - start_time),
+		"no_transfer": False,
+		"layers": layers,
+		"n_q": num_q,
+		# "g_q": list_gates,
+	}
+	print(data)
 
 
 
