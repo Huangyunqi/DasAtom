@@ -373,3 +373,39 @@ def map_to_layer(map: list) -> map:
         } for i in range(len(map))],
         "gates": []
     }
+
+
+def loc_to_qasm(n: int, qubit: int, loc: tuple[int, int]) -> str:
+    """
+    Converts a qubit location to a QASM formatted string.
+
+    Parameters:
+    n (int): The number of qubits in the quantum register.
+    qubit (int): The specific qubit index.
+    loc (tuple[int, int]): The location of the qubit as a tuple of two integers.
+
+    Returns:
+    str: The QASM formatted string representing the qubit location.
+
+    Raises:
+    ValueError: If the loc tuple does not have exactly two elements.
+    """
+    if len(loc) != 2:
+        raise ValueError("Invalid loc, it must be a tuple of length 2")
+    return f"Qubit(QuantumRegister({n},'q'),{qubit})({loc[0]},{loc[1]})"
+
+def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
+    """
+    Converts a list of qubit locations to QASM format and saves it to a file.
+
+    Parameters:
+    n (int): The number of qubits in the quantum register.
+    map (list[tuple[int, int]]): A list of tuples representing the locations of the qubits.
+    filename (str): The name of the file to save the QASM formatted strings.
+
+    Returns:
+    None
+    """
+    with open(filename, 'w') as f:
+        for i in range(n):
+            f.write(loc_to_qasm(n, i, map[i]) + '\n')
