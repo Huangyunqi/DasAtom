@@ -69,13 +69,11 @@ if __name__ == "__main__":
 		current_map = embeddings[i]
 		next_map = embeddings[i + 1]
 		next_layer = map_to_layer(next_map)
-		
 		last_layer = copy.deepcopy(layers[-1])
 		movements = get_movement(current_map,next_map)
 		# Sort movements by distance in descending order
 		sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
 		# print(f'sorted_keys:{sorted_keys}')
-		
 		# Check for violations
 		violations = []
 		for i in range(len(sorted_keys)):
@@ -84,14 +82,14 @@ if __name__ == "__main__":
 					violations.append((sorted_keys[i], sorted_keys[j]))
 
 		# print(f'Violations: {violations}')
-		
+
 		# Resolve violations
 		while violations:
 			new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
 			layers.append(new_layer)
 			for i in range(num_q):
-				if last_layer["qubits"][i]["a"] == 1:
-					last_layer["qubits"][i] = next_layer
+				if new_layer["qubits"][i]["a"] == 1:
+					last_layer["qubits"][i] = next_layer["qubits"][i]
 				
 		if movements:
 			for qubit in movements:
@@ -101,8 +99,6 @@ if __name__ == "__main__":
 						qubit_["a"] = 1
 			layers.append(last_layer)
 		layers.append(next_layer)
-		
-				
 	data = {
 		# "runtime": float(time.time() - start_time),
 		"no_transfer": False,
