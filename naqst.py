@@ -392,7 +392,7 @@ def loc_to_qasm(n: int, qubit: int, loc: tuple[int, int]) -> str:
     """
     if len(loc) != 2:
         raise ValueError("Invalid loc, it must be a tuple of length 2")
-    return f"Qubit(QuantumRegister({n},'q'),{qubit})({loc[0]},{loc[1]})"
+    return f"Qubit(QuantumRegister({n}, 'q'), {qubit})\n({loc[0]}, {loc[1]})"
 
 def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
     """
