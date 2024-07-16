@@ -9,6 +9,7 @@ from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
 
 from vfsexp import Vf 
+import copy
 
 def qubits_num(Circuit): #Circuit: gates list 
 	num = max(max(gate) for gate in Circuit)
@@ -311,13 +312,219 @@ def complete_mapping(i, embeddings, indices, coupling_graph):
 			unoccupied.remove(min_node)
 	return cur_map
 
+
+from networkx import maximal_independent_set, Graph
+
+def compatible_2D(a: list[int], b: list[int]) -> bool:
+    """
+    Checks if two 2D points are compatible based on specified rules.
+
+    Parameters:
+    a (list[int]): A list of four integers representing the first point. The elements are ordered as [x_loc_before, y_loc_before, x_loc_after, y_loc_after].
+    b (list[int]): A list of four integers representing the second point. The elements are ordered as [x_loc_before, y_loc_before, x_loc_after, y_loc_after].
+
+    Returns:
+    bool: True if the points are compatible, False otherwise.
+    """
+    assert len(a) == 4 and len(b) == 4, "Both arguments must be lists with exactly four elements."
+
+    # Check compatibility for the first two elements of each point
+    if a[0] == b[0] and a[1] != b[1]:
+        return False
+    if a[1] == b[1] and a[0] != b[0]:
+        return False
+    if a[0] < b[0] and a[1] >= b[1]:
+        return False
+    if a[0] > b[0] and a[1] <= b[1]:
+        return False
+
+    # Check compatibility for the last two elements of each point
+    if a[2] == b[2] and a[3] != b[3]:
+        return False
+    if a[3] == b[3] and a[2] != b[2]:
+        return False
+    if a[2] < b[2] and a[3] >= b[3]:
+        return False
+    if a[2] > b[2] and a[3] <= b[3]:
+        return False
+
+    return True
+
+def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> list[int]:
+    """
+    Finds a maximal independent set from the given graph nodes using a sorted approach.
+
+    Parameters:
+    n (int): Number of nodes in the graph. The nodes were expressed by integers from 0 to n-1.
+    edges (list[tuple[int]]): List of edges in the graph, where each edge is a tuple of two nodes.
+    nodes (set[int]): Set of nodes to consider for the maximal independent set.
+
+    Returns:
+    list[int]: List of nodes in the maximal independent set.
+    """
+    # Initialize conflict status for each node
+    is_node_conflict = [False for _ in range(n)]
+    
+    # Create a dictionary to store neighbors of each node
+    node_neighbors = {i: [] for i in range(n)}
+    
+    # Populate the neighbors dictionary
+    for edge in edges:
+        node_neighbors[edge[0]].append(edge[1])
+        node_neighbors[edge[1]].append(edge[0])
+    
+    result = []
+    for i in nodes:
+        if is_node_conflict[i]:
+            continue
+        else:
+            result.append(i)
+            for j in node_neighbors[i]:
+                is_node_conflict[j] = True
+    return result
+
+def maximalis_solve(n, edges):
+    """
+    Wrapper function to find a maximal independent set using the Graph class.
+
+    Parameters:
+    n (int): Number of nodes in the graph. The nodes were expressed by integers from 0 to n-1.
+    edges (list[tuple[int]]): List of edges in the graph.
+
+    Returns:
+    list[int]: List of nodes in the maximal independent set.
+    """
+    G = Graph()
+    for i in range(n):
+        G.add_node(i)
+    for edge in edges:
+        G.add_edge(edge[0], edge[1])
+    
+    # Use a library function to find the maximal independent set
+    result = maximal_independent_set(G, seed=0) 
+    return result
+
+def get_movement(current_map: list, next_map: list, window_size=None) -> map:
+    """
+    Determines the movements of qubits between two maps.
+
+    Parameters:
+    current_map (list): List of current positions of qubits.
+    next_map (list): List of next positions of qubits.
+    window_size (optional): Size of the window for movement calculations.
+
+    Returns:
+    map: A dictionary with qubit movements.
+    """
+    movements = {}
+    # Determine movements of qubits
+    for qubit, current_position in enumerate(current_map):
+        next_position = next_map[qubit]
+        if current_position != next_position:
+            move_details = current_position + next_position
+            movements[qubit] = move_details
+    return movements
+
+def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q, layer):
+    """
+    Resolves violations in qubit movements based on the routing strategy.
+
+    Parameters:
+    movements (dict): Dictionary of qubit movements.
+    violations (list): List of violations to be resolved.
+    sorted_keys (list): List of qubit keys sorted based on priority.
+    routing_strategy (str): Strategy to use for routing ('maximalis' or 'maximalis_sort').
+    num_q (int): Number of qubits.
+    layer (dict): Dictionary representing the current layer configuration.
+
+    Returns:
+    tuple: Updated layer, remaining movements, and unresolved violations.
+    """
+    if routing_strategy == "maximalis":
+        resolution_order = maximalis_solve(sorted_keys, violations)
+    else:
+        resolution_order = maximalis_solve_sort(num_q, violations, sorted_keys)
+    
+    print(f'Resolution Order: {resolution_order}')
+    
+    layer = copy.deepcopy(layer)
+    for qubit in resolution_order:
+        sorted_keys.remove(qubit)
+        
+        move = movements[qubit]
+        print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        for qubit_ in layer["qubits"]:
+            if qubit_["id"] == qubit:
+                qubit_["a"] = 1
+        
+        # Remove resolved violations
+        violations = [v for v in violations if qubit not in v]
+        del movements[qubit]
+    
+    return layer, movements, violations
+
+def map_to_layer(map: list) -> map:
+    """
+    Converts a list of qubit positions to a layer dictionary.
+
+    Parameters:
+    map (list): List of qubit positions.
+
+    Returns:
+    map: Dictionary representing the layer configuration.
+    """
+    return {
+        "qubits": [{
+            "id": i,
+            "a": 0,
+            "x": map[i][0],
+            "y": map[i][1],
+            "c": map[i][0],
+            "r": map[i][1],
+        } for i in range(len(map))],
+        "gates": []
+    }
+
+
+def loc_to_qasm(n: int, qubit: int, loc: tuple[int, int]) -> str:
+    """
+    Converts a qubit location to a QASM formatted string.
+
+    Parameters:
+    n (int): The number of qubits in the quantum register.
+    qubit (int): The specific qubit index.
+    loc (tuple[int, int]): The location of the qubit as a tuple of two integers.
+
+    Returns:
+    str: The QASM formatted string representing the qubit location.
+
+    Raises:
+    ValueError: If the loc tuple does not have exactly two elements.
+    """
+    if len(loc) != 2:
+        raise ValueError("Invalid loc, it must be a tuple of length 2")
+    return f"Qubit(QuantumRegister({n}, 'q'), {qubit})\n({loc[0]}, {loc[1]})"
+
+def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
+    """
+    Converts a list of qubit locations to QASM format and saves it to a file.
+
+    Parameters:
+    n (int): The number of qubits in the quantum register.
+    map (list[tuple[int, int]]): A list of tuples representing the locations of the qubits.
+    filename (str): The name of the file to save the QASM formatted strings.
+
+    Returns:
+    None
+    """
+    with open(filename, 'w') as f:
+        for i in range(n):
+            f.write(loc_to_qasm(n, i, map[i]) + '\n')
+            
 def check_available(graph, coupling_graph, mapping):
 
 	for eg0, eg1 in graph.edges():
 		if (mapping[eg0], mapping[eg1]) not in coupling_graph.edges():
 			return False
 	return True
-
-
-
 
