@@ -1,5 +1,6 @@
 import rustworkx as rx
 import networkx as nx
+import numpy as np
 import random
 import math
 import os
@@ -26,36 +27,89 @@ def CreateCircuitFromQASM(file, path):
     QASM_file.close    
     return cir
 
-def get_rx_subg_mapping(graph_max, G):
-    sub_graph = rx.networkx_converter(graph_max)
-    big_graph = rx.networkx_converter(G)
-    nx_edge_s = list(graph_max.edges())
-    rx_edge_s = list(sub_graph.edge_list())
-    rx_nx_s = dict()
-    for i in range(len(rx_edge_s)):
-    	if rx_edge_s[i][0] not in rx_nx_s:
-    		rx_nx_s[rx_edge_s[i][0]] = nx_edge_s[i][0]
-    	if rx_edge_s[i][1] not in rx_nx_s:
-    		rx_nx_s[rx_edge_s[i][1]] = nx_edge_s[i][1]
-    nx_edge_G = list(G.edges())
-    rx_edge_G = list(big_graph.edge_list())
-    rx_nx_G = dict()
-    for i in range(len(rx_edge_G)):
-    	if rx_edge_G[i][0] not in rx_nx_G:
-    		rx_nx_G[rx_edge_G[i][0]] = nx_edge_G[i][0]
-    	if rx_edge_G[i][1] not in rx_nx_G:
-    		rx_nx_G[rx_edge_G[i][1]] = nx_edge_G[i][1]
-    vf2 = rx.vf2_mapping(big_graph, sub_graph, subgraph=True, induced = False)
-    M = []
-    while(True):
-        try :
-            item = next(vf2)
-            reverse_mapping = {rx_nx_s[value]: rx_nx_G[key] for  key, value in item.items()}
-            M.append(reverse_mapping)
-        except StopIteration:
-            break
-    random_element = random.choice(M)
-    return random_element
+def get_rx_all_mapping(graph_max, G):
+	sub_graph = rx.networkx_converter(graph_max)
+	big_graph = rx.networkx_converter(G)
+	nx_edge_s = list(graph_max.edges())
+	rx_edge_s = list(sub_graph.edge_list())
+	rx_nx_s = dict()
+	for i in range(len(rx_edge_s)):
+		if rx_edge_s[i][0] not in rx_nx_s:
+			rx_nx_s[rx_edge_s[i][0]] = nx_edge_s[i][0]
+		if rx_edge_s[i][1] not in rx_nx_s:
+			rx_nx_s[rx_edge_s[i][1]] = nx_edge_s[i][1]
+	nx_edge_G = list(G.edges())
+	rx_edge_G = list(big_graph.edge_list())
+	rx_nx_G = dict()
+	for i in range(len(rx_edge_G)):
+		if rx_edge_G[i][0] not in rx_nx_G:
+			rx_nx_G[rx_edge_G[i][0]] = nx_edge_G[i][0]
+		if rx_edge_G[i][1] not in rx_nx_G:
+			rx_nx_G[rx_edge_G[i][1]] = nx_edge_G[i][1]
+	vf2 = rx.vf2_mapping(big_graph, sub_graph, subgraph=True, induced = False)
+	M = []
+	times = 0
+	while(True):
+		try :
+			times += 1
+			if times % 100000 == 0:
+				print(times)
+			item = next(vf2)
+			reverse_mapping = {rx_nx_s[value]: rx_nx_G[key] for  key, value in item.items()}
+			M.append(reverse_mapping)
+		except StopIteration:
+			break
+	return M
+
+def get_rx_rand_mapping(graph_max, G):
+	M = get_rx_all_mapping(graph_max, G)
+	random_element = random.choice(M)
+	return random_element
+
+def get_rx_one_mapping(graph_max, G):
+	sub_graph = rx.networkx_converter(graph_max)
+	big_graph = rx.networkx_converter(G)
+	nx_edge_s = list(graph_max.edges())
+	rx_edge_s = list(sub_graph.edge_list())
+	rx_nx_s = dict()
+	for i in range(len(rx_edge_s)):
+		if rx_edge_s[i][0] not in rx_nx_s:
+			rx_nx_s[rx_edge_s[i][0]] = nx_edge_s[i][0]
+		if rx_edge_s[i][1] not in rx_nx_s:
+			rx_nx_s[rx_edge_s[i][1]] = nx_edge_s[i][1]
+	nx_edge_G = list(G.edges())
+	rx_edge_G = list(big_graph.edge_list())
+	rx_nx_G = dict()
+	for i in range(len(rx_edge_G)):
+		if rx_edge_G[i][0] not in rx_nx_G:
+			rx_nx_G[rx_edge_G[i][0]] = nx_edge_G[i][0]
+		if rx_edge_G[i][1] not in rx_nx_G:
+			rx_nx_G[rx_edge_G[i][1]] = nx_edge_G[i][1]
+	vf2 = rx.vf2_mapping(big_graph, sub_graph, subgraph=True, induced = False)
+	item = next(vf2)
+	reverse_mapping = {rx_nx_s[value]: rx_nx_G[key] for  key, value in item.items()}
+	return reverse_mapping
+
+def map_dist(map1, map2, coupling_graph):
+	dist = 0
+	for i in range(len(map1)):
+		if map1[i] != -1 and map2[i] != -1:
+			dist += nx.shortest_path_length(coupling_graph, map1[i], map2[i])
+	return dist
+
+def get_close_mapping_rx(subG, G, pre_map, num_q):
+	M = get_rx_all_mapping(subG, G)
+	print("num of M", len(M))
+	if not M:
+		raise()
+	min_dis = np.inf
+	for mapping in M:
+		dist = map_dist(pre_map, map2list(mapping,num_q), G)
+		if dist < min_dis:
+			final_map = map2list(mapping,num_q)
+			min_dis = dist
+	return final_map
+
 
 def rx_is_subgraph_iso(G, subG):
     Grx = rx.networkx_converter(G)
@@ -81,10 +135,21 @@ def parition_from_DAG(dag, coupling_graph):
 	last_index = 0
 	partition_gates = []
 	for i in range(len(gate_layer_list)):
+		#print(i)
+		#print(last_index)
 		merge_gates = sum(gate_layer_list[last_index:i+1], [])
 		tmp_graph = nx.Graph()
 		tmp_graph.add_edges_from(merge_gates)
-		if rx_is_subgraph_iso(coupling_graph, tmp_graph):
+		connected_components = list(nx.connected_components(tmp_graph))
+		isIso = True
+		for idx, component in enumerate(connected_components, 1):
+			subgraph = tmp_graph.subgraph(component)
+			if len(subgraph.edges()) == nx.diameter(subgraph): #path-tolopology, must sub_iso
+				continue
+			if not rx_is_subgraph_iso(coupling_graph, subgraph):
+				isIso = False
+				break
+		if isIso:
 			if i == len(gate_layer_list) - 1:
 				merge_gates = sum(gate_layer_list[last_index: i+1], [])
 				partition_gates.append(merge_gates)
@@ -97,6 +162,51 @@ def parition_from_DAG(dag, coupling_graph):
 				merge_gates = sum(gate_layer_list[last_index: i+1], [])
 				partition_gates.append(merge_gates)
 
+	return partition_gates
+
+def get_max_diamter(G):
+	diameter = []
+	connected_components = list(nx.connected_components(G))
+	# 对每个联通分支计算直径
+	for idx, component in enumerate(connected_components, 1):
+    	# 创建联通分支的子图
+		subgraph = G.subgraph(component)
+    
+    	# 计算直径
+		diameter.append(nx.diameter(subgraph))
+	return max(diameter)
+
+def partition_G_property(dag, coupling_graph):
+	gate_layer_list = get_layer_gates(dag)
+	num_of_gate = 0
+	last_index = 0
+	partition_gates = []
+	for i in range(len(gate_layer_list)):
+		merge_gates = sum(gate_layer_list[last_index:i+1], [])
+		tmp_graph = nx.Graph()
+		tmp_graph.add_edges_from(merge_gates)
+		diameter = get_max_diamter(tmp_graph)
+		if diameter <= 10 or (len(tmp_graph.edges())/diameter) > 2.8:
+			if rx_is_subgraph_iso(coupling_graph, tmp_graph):
+				if i == len(gate_layer_list) - 1:
+					merge_gates = sum(gate_layer_list[last_index: i+1], [])
+					partition_gates.append(merge_gates)
+				continue
+			else:
+				merge_gates = sum(gate_layer_list[last_index: i], [])
+				partition_gates.append(merge_gates)
+				last_index = i
+				if i == len(gate_layer_list) - 1:
+					merge_gates = sum(gate_layer_list[last_index: i+1], [])
+					partition_gates.append(merge_gates)
+
+		else:
+			merge_gates = sum(gate_layer_list[last_index: i], [])
+			partition_gates.append(merge_gates)
+			last_index = i
+			if i == len(gate_layer_list) - 1:
+				merge_gates = sum(gate_layer_list[last_index: i+1], [])
+				partition_gates.append(merge_gates)
 	return partition_gates
 
 
@@ -201,6 +311,7 @@ def complete_mapping(i, embeddings, indices, coupling_graph):
 			cur_map[index] = min_node
 			unoccupied.remove(min_node)
 	return cur_map
+
 
 from networkx import maximal_independent_set, Graph
 
@@ -409,3 +520,11 @@ def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
     with open(filename, 'w') as f:
         for i in range(n):
             f.write(loc_to_qasm(n, i, map[i]) + '\n')
+            
+def check_available(graph, coupling_graph, mapping):
+
+	for eg0, eg1 in graph.edges():
+		if (mapping[eg0], mapping[eg1]) not in coupling_graph.edges():
+			return False
+	return True
+
