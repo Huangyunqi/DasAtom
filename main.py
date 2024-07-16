@@ -14,8 +14,8 @@ if __name__ == "__main__":
 	for num_file in range(40, 45):
 		file_name = 'qft_{}.qasm'.format(num_file)
 		print(file_name)
-		wb = Workbook()
-		ws = wb.active
+		#wb = Workbook()
+		#ws = wb.active
 		total_time = time.time()
 		circuit = CreateCircuitFromQASM(file_name, path)
 	#transform to cz-based circuit
@@ -40,7 +40,7 @@ if __name__ == "__main__":
 		partition_gates = parition_from_DAG(dag, coupling_graph)
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
-		ws.append(["partition time", time_part1-time_part])
+		#ws.append(["partition time", time_part1-time_part])
 	#print("------------------------------")
 		part_gate_num = 0
 		for gates in partition_gates:
@@ -64,21 +64,21 @@ if __name__ == "__main__":
 			print(tmp_graph.edges())
 			data.append(str(partition_gates[i]))
 			time1 = time.time()
-			#next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
-			#next_embedding = map2list(next_embedding,num_q)
-			next_embedding = find_map_SA(embeddings[i-1], tmp_graph, coupling_graph)
-			print("SA embedding:",next_embedding)
-			if not check_available(tmp_graph, coupling_graph, next_embedding):
-				print("SA False!!!!")
-				ws.append(["!SA False!"])
-				next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
-				next_embedding = map2list(next_embedding,num_q)
+			next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
+			next_embedding = map2list(next_embedding,num_q)
+			#next_embedding = find_map_SA(embeddings[i-1], tmp_graph, coupling_graph)
+			#print("SA embedding:",next_embedding)
+			#if not check_available(tmp_graph, coupling_graph, next_embedding):
+			#	print("SA False!!!!")
+			#	ws.append(["!SA False!"])
+			#	next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
+			#	next_embedding = map2list(next_embedding,num_q)
 			time2 = time.time()
 			embeddings.append(next_embedding)
 		#embeddings.append(next_embedding)
 			data.append(str(embeddings[-1]))
 			data.append(time2-time1)
-			ws.append(data)
+			#ws.append(data)
 			print(embeddings[-1])
 			print(time2-time1)
 		
@@ -92,13 +92,13 @@ if __name__ == "__main__":
 			time2 = time.time()
 			data.append(str(embeddings[i]))
 			data.append(time2-time1)
-			ws.append(data)
+			#ws.append(data)
 		total_time1 = time.time()
 		print("total time is:", total_time1-total_time)
-		ws.append(["total time", total_time1-total_time])
-		save_file = 'results/yq_test/qft/qft_{}_SA.xlsx'.format(num_file)
-		print(save_file)
-		wb.save(save_file)
+		#ws.append(["total time", total_time1-total_time])
+		#save_file = 'results/yq_test/qft/qft_{}_SA.xlsx'.format(num_file)
+		#print(save_file)
+		#wb.save(save_file)
 
 
    	#TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
