@@ -329,23 +329,23 @@ def compatible_2D(a: list[int], b: list[int]) -> bool:
     assert len(a) == 4 and len(b) == 4, "Both arguments must be lists with exactly four elements."
 
     # Check compatibility for the first two elements of each point
-    if a[0] == b[0] and a[1] != b[1]:
+    if a[0] == b[0] and a[2] != b[2]:
         return False
-    if a[1] == b[1] and a[0] != b[0]:
+    if a[2] == b[2] and a[0] != b[0]:
         return False
-    if a[0] < b[0] and a[1] >= b[1]:
+    if a[0] < b[0] and a[2] >= b[2]:
         return False
-    if a[0] > b[0] and a[1] <= b[1]:
+    if a[0] > b[0] and a[2] <= b[2]:
         return False
 
     # Check compatibility for the last two elements of each point
-    if a[2] == b[2] and a[3] != b[3]:
+    if a[1] == b[1] and a[3] != b[3]:
         return False
-    if a[3] == b[3] and a[2] != b[2]:
+    if a[3] == b[3] and a[1] != b[1]:
         return False
-    if a[2] < b[2] and a[3] >= b[3]:
+    if a[1] < b[1] and a[3] >= b[3]:
         return False
-    if a[2] > b[2] and a[3] <= b[3]:
+    if a[1] > b[1] and a[3] <= b[3]:
         return False
 
     return True
@@ -383,7 +383,7 @@ def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> li
                 is_node_conflict[j] = True
     return result
 
-def maximalis_solve(n, edges):
+def maximalis_solve(nodes:list[int], edges:list[tuple[int]])-> list[int]:
     """
     Wrapper function to find a maximal independent set using the Graph class.
 
@@ -395,7 +395,7 @@ def maximalis_solve(n, edges):
     list[int]: List of nodes in the maximal independent set.
     """
     G = Graph()
-    for i in range(n):
+    for i in nodes:
         G.add_node(i)
     for edge in edges:
         G.add_edge(edge[0], edge[1])
