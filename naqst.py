@@ -329,23 +329,23 @@ def compatible_2D(a: list[int], b: list[int]) -> bool:
     assert len(a) == 4 and len(b) == 4, "Both arguments must be lists with exactly four elements."
 
     # Check compatibility for the first two elements of each point
-    if a[0] == b[0] and a[1] != b[1]:
+    if a[0] == b[0] and a[2] != b[2]:
         return False
-    if a[1] == b[1] and a[0] != b[0]:
+    if a[2] == b[2] and a[0] != b[0]:
         return False
-    if a[0] < b[0] and a[1] >= b[1]:
+    if a[0] < b[0] and a[2] >= b[2]:
         return False
-    if a[0] > b[0] and a[1] <= b[1]:
+    if a[0] > b[0] and a[2] <= b[2]:
         return False
 
     # Check compatibility for the last two elements of each point
-    if a[2] == b[2] and a[3] != b[3]:
+    if a[1] == b[1] and a[3] != b[3]:
         return False
-    if a[3] == b[3] and a[2] != b[2]:
+    if a[3] == b[3] and a[1] != b[1]:
         return False
-    if a[2] < b[2] and a[3] >= b[3]:
+    if a[1] < b[1] and a[3] >= b[3]:
         return False
-    if a[2] > b[2] and a[3] <= b[3]:
+    if a[1] > b[1] and a[3] <= b[3]:
         return False
 
     return True
@@ -383,7 +383,7 @@ def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> li
                 is_node_conflict[j] = True
     return result
 
-def maximalis_solve(n, edges):
+def maximalis_solve(nodes:list[int], edges:list[tuple[int]])-> list[int]:
     """
     Wrapper function to find a maximal independent set using the Graph class.
 
@@ -395,7 +395,7 @@ def maximalis_solve(n, edges):
     list[int]: List of nodes in the maximal independent set.
     """
     G = Graph()
-    for i in range(n):
+    for i in nodes:
         G.add_node(i)
     for edge in edges:
         G.add_edge(edge[0], edge[1])
@@ -445,14 +445,14 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
     else:
         resolution_order = maximalis_solve_sort(num_q, violations, sorted_keys)
     
-    print(f'Resolution Order: {resolution_order}')
+    # print(f'Resolution Order: {resolution_order}')
     
     layer = copy.deepcopy(layer)
     for qubit in resolution_order:
         sorted_keys.remove(qubit)
         
         move = movements[qubit]
-        print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        # print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
         for qubit_ in layer["qubits"]:
             if qubit_["id"] == qubit:
                 qubit_["a"] = 1
@@ -520,6 +520,12 @@ def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
     with open(filename, 'w') as f:
         for i in range(n):
             f.write(loc_to_qasm(n, i, map[i]) + '\n')
+def gate_in_layer(gate_list:list[list[int]])->list[map]:
+    res = []
+    for i in range(len(gate_list),-1):
+        assert len(gate_list[i]) == 2
+        res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
+    return res
             
 def check_available(graph, coupling_graph, mapping):
 
