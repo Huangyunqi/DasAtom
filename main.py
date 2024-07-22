@@ -3,6 +3,8 @@ from openpyxl import Workbook
 import math
 import time
 from vfsexp import Vf
+from .Enola.codegen import CodeGen, global_dict
+import json
 from SA import find_map_SA
 
 if __name__ == "__main__":
@@ -105,12 +107,15 @@ if __name__ == "__main__":
 	window_size = 1000
 	routing_strategy = "maximalis"
 	layers = []
-	layers.append(map_to_layer(embeddings[0]))
+	initial_map = map_to_layer(embeddings[0])
+	initial_map["gates"] = gate_in_layer(partition_gates[0])
+	layers.append(initial_map)
 	for i in range(len(embeddings) - 1):
 		current_map = embeddings[i]
 		next_map = embeddings[i + 1]
+		last_layer = map_to_layer(current_map)
 		next_layer = map_to_layer(next_map)
-		last_layer = copy.deepcopy(layers[-1])
+		
 		movements = get_movement(current_map,next_map)
 		# Sort movements by distance in descending order
 		sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
@@ -123,7 +128,7 @@ if __name__ == "__main__":
 					violations.append((sorted_keys[i], sorted_keys[j]))
 
 		# print(f'Violations: {violations}')
-
+		
 		# Resolve violations
 		while violations:
 			new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
@@ -139,16 +144,38 @@ if __name__ == "__main__":
 					if qubit_["id"] == qubit:
 						qubit_["a"] = 1
 			layers.append(last_layer)
-		layers.append(next_layer)
+		layers[-1]["gates"] = gate_in_layer(partition_gates[i+1])
+		# layers.append(next_layer)
+		
+				
 	data = {
 		# "runtime": float(time.time() - start_time),
 		"no_transfer": False,
 		"layers": layers,
 		"n_q": num_q,
-		# "g_q": list_gates,
+		"g_q": gate_2q_list,
 	}
-	print(data)
+ 
+	global_dict['full_code'] = True
 
+	data['n_x'] = arch_size
+	data['n_y'] = arch_size
+	data['n_r'] = arch_size
+	data['n_c'] = arch_size
+	# print("#layers: {}".format(len(data["layers"])))
+	# t_s = time.time()
+	codegen = CodeGen(data)
+	program = codegen.builder(no_transfer=False)
+	program = program.emit_full()
+ 
+	if global_dict["full_code"]:
+		with open(f"Data/test_{num_q}_{0}_code_full.json", 'w') as f:
+			json.dump(program, f)
+			for instruction in program:
+				instruction["state"] = {}
+    # optional
+    # run following command in terminal:
+    # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"
 
 
 

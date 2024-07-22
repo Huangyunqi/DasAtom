@@ -445,14 +445,14 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
     else:
         resolution_order = maximalis_solve_sort(num_q, violations, sorted_keys)
     
-    print(f'Resolution Order: {resolution_order}')
+    # print(f'Resolution Order: {resolution_order}')
     
     layer = copy.deepcopy(layer)
     for qubit in resolution_order:
         sorted_keys.remove(qubit)
         
         move = movements[qubit]
-        print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        # print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
         for qubit_ in layer["qubits"]:
             if qubit_["id"] == qubit:
                 qubit_["a"] = 1
@@ -520,6 +520,12 @@ def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
     with open(filename, 'w') as f:
         for i in range(n):
             f.write(loc_to_qasm(n, i, map[i]) + '\n')
+def gate_in_layer(gate_list:list[list[int]])->list[map]:
+    res = []
+    for i in range(len(gate_list),-1):
+        assert len(gate_list[i]) == 2
+        res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
+    return res
             
 def check_available(graph, coupling_graph, mapping):
 
