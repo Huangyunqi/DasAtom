@@ -383,7 +383,7 @@ def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> li
                 is_node_conflict[j] = True
     return result
 
-def maximalis_solve(n, edges):
+'''def maximalis_solve(n, edges):
     """
     Wrapper function to find a maximal independent set using the Graph class.
 
@@ -401,6 +401,16 @@ def maximalis_solve(n, edges):
         G.add_edge(edge[0], edge[1])
     
     # Use a library function to find the maximal independent set
+    result = maximal_independent_set(G, seed=0) 
+    return result'''
+
+
+def maximalis_solve(nodes, edges):
+    G = Graph()
+    for i in nodes:
+        G.add_node(i)
+    for edge in edges:
+        G.add_edge(edge[0], edge[1])
     result = maximal_independent_set(G, seed=0) 
     return result
 
@@ -440,19 +450,22 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
     Returns:
     tuple: Updated layer, remaining movements, and unresolved violations.
     """
+    ##Modefied by yq: add all movement results in return
+
     if routing_strategy == "maximalis":
         resolution_order = maximalis_solve(sorted_keys, violations)
     else:
         resolution_order = maximalis_solve_sort(num_q, violations, sorted_keys)
     
-    print(f'Resolution Order: {resolution_order}')
-    
+    #print(f'Resolution Order: {resolution_order}')
+    movement_results = []
     layer = copy.deepcopy(layer)
     for qubit in resolution_order:
         sorted_keys.remove(qubit)
         
         move = movements[qubit]
-        print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        #print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
+        movement_results.append([[qubit], [move[0],move[1]], [move[2],move[3]]])
         for qubit_ in layer["qubits"]:
             if qubit_["id"] == qubit:
                 qubit_["a"] = 1
@@ -461,7 +474,7 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
         violations = [v for v in violations if qubit not in v]
         del movements[qubit]
     
-    return layer, movements, violations
+    return layer, movements, violations, movement_results
 
 def map_to_layer(map: list) -> map:
     """
