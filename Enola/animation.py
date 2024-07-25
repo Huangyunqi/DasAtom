@@ -6,6 +6,7 @@ import matplotlib
 import networkx as nx
 import argparse
 from abc import ABC, abstractmethod
+import math
 
 
 # physics constants
@@ -2108,6 +2109,7 @@ class Animator():
         return
 
     def update(self, f: int):  # f is the frame
+        self.clear_patches()
         if f < self.keyframes[0]:
             return
         for i, inst in enumerate(self.code):
@@ -2134,6 +2136,9 @@ class Animator():
             active_qubits = []
             for g in inst['gates']:
                 active_qubits += [g['q0'], g['q1']]
+                q0_loc = [inst['state']['qubits'][g['q0']]['x'],inst['state']['qubits'][g['q0']]['y']]
+                q1_loc = [inst['state']['qubits'][g['q1']]['x'],inst['state']['qubits'][g['q1']]['y']]
+                self.draw_circles(q0_loc,q1_loc,'red')
             self.texts = [
                 self.ax.text(inst['state']['qubits'][q_id]['x'] + 1,
                              inst['state']['qubits'][q_id]['y'] + 1,
@@ -2164,6 +2169,19 @@ class Animator():
             self.ax.set_facecolor('w')
             for text in self.texts:
                 text.remove()
+
+    def draw_circles(self, q0_loc, q1_loc, color='blue'):
+        distance = math.sqrt((q1_loc[0] - q0_loc[0])**2 + (q1_loc[1] - q0_loc[1])**2)
+        radius = distance/2
+        for center in [q0_loc,q1_loc]:
+            print(f"center loc:{center}, radius:{radius}")
+            circle = matplotlib.patches.Circle(center, radius, edgecolor=color, facecolor='none',linestyle='--')
+            self.ax.add_patch(circle)
+
+    def clear_patches(self):
+        patches = [p for p in self.ax.patches]
+        for p in patches:
+            p.remove()
 
     def interpolate(self, progress: int, duration: int, begin: int, end: int):
         """implement cubic interpolation per Bluvstein et al.
