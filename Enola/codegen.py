@@ -1496,24 +1496,25 @@ class CodeGen():
 
         # when there are more than one qubit in a site at the beginning,
         # need to put one of them in the right trap.
-        for g in self.layers[0]['gates']:
-            a0 = self.layers[1]['qubits'][g['q0']]['a']
-            a1 = self.layers[1]['qubits'][g['q1']]['a']
-            x_left = X_SITE_SEP * self.layers[0]['qubits'][g['q0']]['x']
-            x_right = x_left + SITE_WIDTH
-            y = Y_SITE_SEP * self.layers[0]['qubits'][g['q0']]['y']
+        if len(self.layers) > 1:
+            for g in self.layers[0]['gates'] :
+                a0 = self.layers[1]['qubits'][g['q0']]['a']
+                a1 = self.layers[1]['qubits'][g['q1']]['a']
+                x_left = X_SITE_SEP * self.layers[0]['qubits'][g['q0']]['x']
+                x_right = x_left + SITE_WIDTH
+                y = Y_SITE_SEP * self.layers[0]['qubits'][g['q0']]['y']
 
-            # if both atoms are in AOD, use their column indices to decide
-            # which one to put in the left trap and which one to the right
-            # if they have the same col index, the order does not matter
-            # in Reload, we will pick them up in different rows.
-            if (a0 == 1
-                and a1 == 1
-                and self.layers[1]['qubits'][g['q0']]['c'] >
-                    self.layers[1]['qubits'][g['q1']]['c']):
-                slm_qubit_xys[g['q0']] = (x_right, y)
-            else:
-                slm_qubit_xys[g['q1']] = (x_right, y)
+                # if both atoms are in AOD, use their column indices to decide
+                # which one to put in the left trap and which one to the right
+                # if they have the same col index, the order does not matter
+                # in Reload, we will pick them up in different rows.
+                if (a0 == 1
+                    and a1 == 1
+                    and self.layers[1]['qubits'][g['q0']]['c'] >
+                        self.layers[1]['qubits'][g['q1']]['c']):
+                    slm_qubit_xys[g['q0']] = (x_right, y)
+                else:
+                    slm_qubit_xys[g['q1']] = (x_right, y)
 
         init = Init(cols, rows, qubits,
                     slm_qubit_idx=slm_qubit_idx,

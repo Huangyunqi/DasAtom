@@ -522,7 +522,7 @@ def map_to_qasm(n: int, map: list[tuple[int, int]], filename: str) -> None:
             f.write(loc_to_qasm(n, i, map[i]) + '\n')
 def gate_in_layer(gate_list:list[list[int]])->list[map]:
     res = []
-    for i in range(len(gate_list),-1):
+    for i in range(len(gate_list)-1,-1,-1):
         assert len(gate_list[i]) == 2
         res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
     return res
