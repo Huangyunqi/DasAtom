@@ -3,18 +3,20 @@ from openpyxl import Workbook
 import math
 import time
 from vfsexp import Vf
-from .Enola.codegen import CodeGen, global_dict
+from Enola.codegen import CodeGen, global_dict
 import json
 from SA import find_map_SA
 
 if __name__ == "__main__":
 
 	#qasm input
-	path = "Data/qft/"
-	#files = os.listdir(path)
+	#path = "Data/qft/"
+	path = "Data/Q_tetris/"
+	files = os.listdir(path)
 	#file_name = 'qft_50.qasm'
-	for num_file in range(40, 45):
-		file_name = 'qft_{}.qasm'.format(num_file)
+	for num_file in [0]:
+		#file_name = 'qft_{}.qasm'.format(num_file)
+		file_name = files[num_file]
 		print(file_name)
 		#wb = Workbook()
 		#ws = wb.active
@@ -54,12 +56,8 @@ if __name__ == "__main__":
 
     #for each partition, find a proper embedding
 		embeddings = []
-		tmp_graph = nx.Graph()
-		tmp_graph.add_edges_from(partition_gates[0])
-		initial_map = get_rx_one_mapping(tmp_graph, coupling_graph)
-		embeddings.append(map2list(initial_map,num_q))
 		print("partition number:", len(partition_gates))
-		for i in range(1, len(partition_gates)):
+		for i in range(0, len(partition_gates)):
 			data = []
 			tmp_graph = nx.Graph()
 			tmp_graph.add_edges_from(partition_gates[i])
@@ -103,76 +101,76 @@ if __name__ == "__main__":
     
   # TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
     
-	window = False
-	window_size = 1000
-	routing_strategy = "maximalis"
-	layers = []
-	initial_map = map_to_layer(embeddings[0])
-	initial_map["gates"] = gate_in_layer(partition_gates[0])
-	layers.append(initial_map)
-	for i in range(len(embeddings) - 1):
-		current_map = embeddings[i]
-		next_map = embeddings[i + 1]
-		last_layer = map_to_layer(current_map)
-		next_layer = map_to_layer(next_map)
+		window = False
+		window_size = 1000
+		routing_strategy = "maximalis"
+		layers = []
+		initial_map = map_to_layer(embeddings[0])
+		initial_map["gates"] = gate_in_layer(partition_gates[0])
+		layers.append(initial_map)
+		for i in range(len(embeddings) - 1):
+			current_map = embeddings[i]
+			next_map = embeddings[i + 1]
+			last_layer = map_to_layer(current_map)
+			next_layer = map_to_layer(next_map)
 		
-		movements = get_movement(current_map,next_map)
+			movements = get_movement(current_map,next_map)
 		# Sort movements by distance in descending order
-		sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
+			sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
 		# print(f'sorted_keys:{sorted_keys}')
 		# Check for violations
-		violations = []
-		for i in range(len(sorted_keys)):
-			for j in range(i + 1, len(sorted_keys)):
-				if not compatible_2D(movements[sorted_keys[i]], movements[sorted_keys[j]]):
-					violations.append((sorted_keys[i], sorted_keys[j]))
+			violations = []
+			for i in range(len(sorted_keys)):
+				for j in range(i + 1, len(sorted_keys)):
+					if not compatible_2D(movements[sorted_keys[i]], movements[sorted_keys[j]]):
+						violations.append((sorted_keys[i], sorted_keys[j]))
 
 		# print(f'Violations: {violations}')
 		
 		# Resolve violations
-		while violations:
-			new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
-			layers.append(new_layer)
-			for i in range(num_q):
-				if new_layer["qubits"][i]["a"] == 1:
-					last_layer["qubits"][i] = next_layer["qubits"][i]
+			while violations:
+				new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
+				layers.append(new_layer)
+				for i in range(num_q):
+					if new_layer["qubits"][i]["a"] == 1:
+						last_layer["qubits"][i] = next_layer["qubits"][i]
 				
-		if movements:
-			for qubit in movements:
-				move = movements[qubit]
-				for qubit_ in last_layer["qubits"]:
-					if qubit_["id"] == qubit:
-						qubit_["a"] = 1
-			layers.append(last_layer)
-		layers[-1]["gates"] = gate_in_layer(partition_gates[i+1])
+			if movements:
+				for qubit in movements:
+					move = movements[qubit]
+					for qubit_ in last_layer["qubits"]:
+						if qubit_["id"] == qubit:
+							qubit_["a"] = 1
+				layers.append(last_layer)
+			layers[-1]["gates"] = gate_in_layer(partition_gates[i+1])
 		# layers.append(next_layer)
 		
 				
-	data = {
+		data = {
 		# "runtime": float(time.time() - start_time),
 		"no_transfer": False,
 		"layers": layers,
 		"n_q": num_q,
 		"g_q": gate_2q_list,
-	}
+		}
  
-	global_dict['full_code'] = True
+		global_dict['full_code'] = True
 
-	data['n_x'] = arch_size
-	data['n_y'] = arch_size
-	data['n_r'] = arch_size
-	data['n_c'] = arch_size
+		data['n_x'] = arch_size
+		data['n_y'] = arch_size
+		data['n_r'] = arch_size
+		data['n_c'] = arch_size
 	# print("#layers: {}".format(len(data["layers"])))
 	# t_s = time.time()
-	codegen = CodeGen(data)
-	program = codegen.builder(no_transfer=False)
-	program = program.emit_full()
+		codegen = CodeGen(data)
+		program = codegen.builder(no_transfer=False)
+		program = program.emit_full()
  
-	if global_dict["full_code"]:
-		with open(f"Data/test_{num_q}_{0}_code_full.json", 'w') as f:
-			json.dump(program, f)
-			for instruction in program:
-				instruction["state"] = {}
+		if global_dict["full_code"]:
+			with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
+				json.dump(program, f)
+				for instruction in program:
+					instruction["state"] = {}
     # optional
     # run following command in terminal:
     # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"
