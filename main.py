@@ -14,12 +14,13 @@ if __name__ == "__main__":
 	path = "Data/Q_tetris/"
 	files = os.listdir(path)
 	#file_name = 'qft_50.qasm'
-	for num_file in [0]:
-		#file_name = 'qft_{}.qasm'.format(num_file)
+	for num_file in range(len(files)):
+		#file_name = 'qft_12.qasm'.format(num_file)
 		file_name = files[num_file]
 		print(file_name)
-		#wb = Workbook()
-		#ws = wb.active
+		wb = Workbook()
+		ws = wb.active
+		log = []
 		total_time = time.time()
 		circuit = CreateCircuitFromQASM(file_name, path)
 	#transform to cz-based circuit
@@ -34,8 +35,9 @@ if __name__ == "__main__":
 		num_q = qubits_num(gate_2q_list)
 		print("Num of gates", gate_num)
 
-		arch_size = math.ceil(math.sqrt(num_q))
-		Rb = math.sqrt(2)
+		arch_size = 2*math.ceil(math.sqrt(num_q))
+		#Rb = math.sqrt(2)
+		Rb = 2
 	#obtain the corresponding coupling_graph 
 		coupling_graph = generate_grid_with_Rb(arch_size,arch_size, Rb)
 
@@ -44,6 +46,7 @@ if __name__ == "__main__":
 		partition_gates = parition_from_DAG(dag, coupling_graph)
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
+		log.append(["partition time", time_part1-time_part])
 		#ws.append(["partition time", time_part1-time_part])
 	#print("------------------------------")
 		part_gate_num = 0
@@ -55,52 +58,21 @@ if __name__ == "__main__":
 
 
     #for each partition, find a proper embedding
-		embeddings = []
+		time_embed = time.time()
+		embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
+		time_embed1 = time.time()
 		print("partition number:", len(partition_gates))
-		for i in range(0, len(partition_gates)):
-			data = []
-			tmp_graph = nx.Graph()
-			tmp_graph.add_edges_from(partition_gates[i])
-			print(tmp_graph.edges())
-			data.append(str(partition_gates[i]))
-			time1 = time.time()
-			next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
-			next_embedding = map2list(next_embedding,num_q)
-			#next_embedding = find_map_SA(embeddings[i-1], tmp_graph, coupling_graph)
-			#print("SA embedding:",next_embedding)
-			#if not check_available(tmp_graph, coupling_graph, next_embedding):
-			#	print("SA False!!!!")
-			#	ws.append(["!SA False!"])
-			#	next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
-			#	next_embedding = map2list(next_embedding,num_q)
-			time2 = time.time()
-			embeddings.append(next_embedding)
-		#embeddings.append(next_embedding)
-			data.append(str(embeddings[-1]))
-			data.append(time2-time1)
-			#ws.append(data)
-			print(embeddings[-1])
-			print(time2-time1)
-		
-		for i in range(len(embeddings)):
-			indices = [index for index, value in enumerate(embeddings[i]) if value == -1]
-			data = []
-			time1 = time.time()
-			if indices:
-				embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
-			time2 = time.time()
-			data.append(str(embeddings[i]))
-			data.append(time2-time1)
-			#ws.append(data)
-		total_time1 = time.time()
-		print("total time is:", total_time1-total_time)
-		#ws.append(["total time", total_time1-total_time])
-		#save_file = 'results/yq_test/qft/qft_{}_SA.xlsx'.format(num_file)
-		#print(save_file)
-		#wb.save(save_file)
-    
-  # TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
-    
+		log.append(["find embeddings time", time_embed1-time_embed])
+
+
+		parallel_gates = []
+		time_paral = time.time()
+		for i in range(len(partition_gates)):
+			gates = get_parallel_gates(partition_gates[i], coupling_graph, embeddings[i])
+			parallel_gates.append(gates)
+		time_paral1 = time.time()
+		log.append(["find parallel_gates time", time_paral1-time_paral])
+
 		window = False
 		window_size = 1000
 		routing_strategy = "maximalis"
@@ -108,9 +80,15 @@ if __name__ == "__main__":
 		initial_map = map_to_layer(embeddings[0])
 		initial_map["gates"] = gate_in_layer(partition_gates[0])
 		layers.append(initial_map)
-		for i in range(len(embeddings) - 1):
-			current_map = embeddings[i]
-			next_map = embeddings[i + 1]
+		all_movements = []
+		for num in range(len(embeddings) - 1):
+			log.append([str(embeddings[num])])
+			for gates in parallel_gates[num]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+
+
+			current_map = embeddings[num]
+			next_map = embeddings[num + 1]
 			last_layer = map_to_layer(current_map)
 			next_layer = map_to_layer(next_map)
 		
@@ -129,7 +107,9 @@ if __name__ == "__main__":
 		
 		# Resolve violations
 			while violations:
-				new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
+				new_layer,movements,violations, movement_result = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
+				all_movements.append(movement_result)
+				log.append([str(movement_result[it]) for it in range(len(movement_result))])
 				layers.append(new_layer)
 				for i in range(num_q):
 					if new_layer["qubits"][i]["a"] == 1:
@@ -138,14 +118,39 @@ if __name__ == "__main__":
 			if movements:
 				for qubit in movements:
 					move = movements[qubit]
+					all_movements.append([[qubit, [move[0],move[1]],[move[2],move[3]]]])
+					log.append([str([qubit, [move[0],move[1]], [move[2],move[3]]])])
 					for qubit_ in last_layer["qubits"]:
 						if qubit_["id"] == qubit:
 							qubit_["a"] = 1
 				layers.append(last_layer)
-			layers[-1]["gates"] = gate_in_layer(partition_gates[i+1])
+			layers[-1]["gates"] = gate_in_layer(partition_gates[num+1])
 		# layers.append(next_layer)
-		
-				
+		if len(partition_gates) > 1:
+			log.append([str(embeddings[num+1])])
+			for gates in parallel_gates[num+1]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+		else:
+			log.append([str(embeddings[0])])
+			for gates in parallel_gates[0]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+		t_idle, Fidelity = compute_fidelity(log, all_movements, num_q, gate_num)
+
+		print("Fidelity is:", Fidelity)
+		log.append(["Fidelity:", Fidelity])
+		log.append(["t_idle:", t_idle])
+
+		total_time1 = time.time()
+		log.append(["total time:", total_time1-total_time])
+		for item in log:
+			#print(item)
+			ws.append(item)
+
+
+		save_file = 'results/yq_test/Tetris_new/{}_rb{}_archsize{}.xlsx'.format(file_name, Rb, arch_size)
+		print(save_file)
+		wb.save(save_file)
+
 		data = {
 		# "runtime": float(time.time() - start_time),
 		"no_transfer": False,
@@ -166,11 +171,11 @@ if __name__ == "__main__":
 		program = codegen.builder(no_transfer=False)
 		program = program.emit_full()
  
-		if global_dict["full_code"]:
-			with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
-				json.dump(program, f)
-				for instruction in program:
-					instruction["state"] = {}
+		#if global_dict["full_code"]:
+		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
+		#		json.dump(program, f)
+		#		for instruction in program:
+		#			instruction["state"] = {}
     # optional
     # run following command in terminal:
     # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"

@@ -10,6 +10,7 @@ from qiskit.converters import dag_to_circuit, circuit_to_dag
 
 from vfsexp import Vf 
 import copy
+from copy import deepcopy
 
 def qubits_num(Circuit): #Circuit: gates list 
 	num = max(max(gate) for gate in Circuit)
@@ -163,6 +164,55 @@ def parition_from_DAG(dag, coupling_graph):
 				partition_gates.append(merge_gates)
 
 	return partition_gates
+
+def partition_from_ini(dag, coupling_graph, initial_mapping):
+	gate_layer_list = get_layer_gates(dag)
+	last_index = 0
+	partition_gates = []
+	first_part = []
+	for i in range(len(gate_layer_list)):
+		flag = True
+		for gate in gate_layer_list[i]:
+			if (initial_mapping[gate[0]],initial_mapping[gate[1]]) in coupling_graph.edges():
+				continue
+			else:
+				flag = False
+				break
+		if flag:
+			first_part.extend(gate_layer_list[i])
+		else:
+			last_index = i
+			break
+	partition_gates.append(first_part)
+	begin_index = last_index
+	for i in range(begin_index, len(gate_layer_list)):
+		merge_gates = sum(gate_layer_list[last_index:i+1], [])
+		tmp_graph = nx.Graph()
+		tmp_graph.add_edges_from(merge_gates)
+		connected_components = list(nx.connected_components(tmp_graph))
+		isIso = True
+		for idx, component in enumerate(connected_components, 1):
+			subgraph = tmp_graph.subgraph(component)
+			if len(subgraph.edges()) == nx.diameter(subgraph): #path-tolopology, must sub_iso
+				continue
+			if not rx_is_subgraph_iso(coupling_graph, subgraph):
+				isIso = False
+				break
+		if isIso:
+			if i == len(gate_layer_list) - 1:
+				merge_gates = sum(gate_layer_list[last_index: i+1], [])
+				partition_gates.append(merge_gates)
+			continue
+		else:
+			merge_gates = sum(gate_layer_list[last_index: i], [])
+			partition_gates.append(merge_gates)
+			last_index = i
+			if i == len(gate_layer_list) - 1:
+				merge_gates = sum(gate_layer_list[last_index: i+1], [])
+				partition_gates.append(merge_gates)
+
+	return partition_gates
+
 
 def get_max_diamter(G):
 	diameter = []
@@ -446,12 +496,13 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
         resolution_order = maximalis_solve_sort(num_q, violations, sorted_keys)
     
     # print(f'Resolution Order: {resolution_order}')
-    
+    movement_result = []
     layer = copy.deepcopy(layer)
     for qubit in resolution_order:
         sorted_keys.remove(qubit)
         
         move = movements[qubit]
+        movement_result.append([qubit, [move[0],move[1]],[move[2],move[3]]])
         # print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
         for qubit_ in layer["qubits"]:
             if qubit_["id"] == qubit:
@@ -461,7 +512,7 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
         violations = [v for v in violations if qubit not in v]
         del movements[qubit]
     
-    return layer, movements, violations
+    return layer, movements, violations, movement_result
 
 def map_to_layer(map: list) -> map:
     """
@@ -533,4 +584,91 @@ def check_available(graph, coupling_graph, mapping):
 		if (mapping[eg0], mapping[eg1]) not in coupling_graph.edges():
 			return False
 	return True
+
+def check_intersect(gate1, gate2, coupling_graph, mapping):
+	rg1 = 1/2 * (euclidean_distance(mapping[gate1[0]], mapping[gate1[1]]))
+	rg2 = 1/2 * (euclidean_distance(mapping[gate2[0]], mapping[gate2[1]]))
+	dis = rg1 + rg2
+	if euclidean_distance(mapping[gate1[0]], mapping[gate2[0]]) >= dis and \
+		euclidean_distance(mapping[gate1[0]], mapping[gate2[1]]) >= dis and \
+		euclidean_distance(mapping[gate1[1]], mapping[gate2[0]]) >= dis and \
+		euclidean_distance(mapping[gate1[1]], mapping[gate2[1]]) >= dis:
+		return True
+	else:
+		return False
+
+
+def get_parallel_gates(gates, coupling_graph, mapping):
+	gates_list = []
+	gates_rg = {}
+
+	gates_copy = deepcopy(gates)
+	while(len(gates_copy) != 0):
+		parallel_gates = []
+		parallel_gates.append(gates_copy[0])
+		for i in range(1, len(gates_copy)):
+			flag = True
+			for gate in parallel_gates:
+				if check_intersect(gate, gates_copy[i], coupling_graph, mapping):
+					continue
+				else:
+					flag = False
+					break
+			if flag:
+				parallel_gates.append(gates_copy[i])
+
+		for gate in parallel_gates:
+			gates_copy.remove(gate)
+		gates_list.append(parallel_gates)
+
+	return gates_list
+
+def set_parameters(default):
+	para = {}
+	if default:
+		para['T_cz'] = 0.2  #us
+		para['T_eff'] = 1.47e6 #us
+		para['T_trans'] = 20 # us
+		para['AOD_width'] = 19 #um
+		para['AOD_height'] = 15 #um
+		para['Move_speed'] = 0.55 #um/us
+		para['F_cz'] = 0.995 
+
+	return para
+
+def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
+	para = set_parameters(True)
+	t_total = 0
+	t_total += (len(parallel_gates) * para['T_cz']) # cz execution time, parallel
+	for move in all_movements:
+		t_total += (4 * para['T_trans']) # pick/drop/pick/drop
+		max_dis = 0
+		for each_move in move:
+			x1, y1 = each_move[1][0],each_move[1][1]
+			x2, y2 = each_move[2][0],each_move[2][1]
+			dis = (abs(x2-x1)*para['AOD_width'])**2 + (abs(y2-y1)*para['AOD_height'])**2
+			if dis > max_dis:
+				max_dis = dis
+		max_dis = math.sqrt(max_dis)
+		t_total += (max_dis/para['Move_speed'])
+
+	t_idle = num_q * t_total - gate_num * para['T_cz']
+	Fidelity = math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
+	return t_idle, Fidelity
+
+def get_embeddings(partition_gates, coupling_graph, num_q):
+	embeddings = []
+	for i in range(len(partition_gates)):
+		tmp_graph = nx.Graph()
+		tmp_graph.add_edges_from(partition_gates[i])
+		next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
+		next_embedding = map2list(next_embedding,num_q)
+		embeddings.append(next_embedding)
+
+	for i in range(len(embeddings)):
+		indices = [index for index, value in enumerate(embeddings[i]) if value == -1]
+		if indices:
+			embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
+
+	return embeddings
 
