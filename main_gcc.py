@@ -38,7 +38,7 @@ if __name__ == "__main__":
 		num_q = qubits_num(gate_2q_list)
 
 		arch_size = math.ceil(math.sqrt(num_q))
-		Rb = math.sqrt(2)
+		Rb = 2
 	#obtain the corresponding coupling_graph 
 		coupling_graph = generate_grid_with_Rb(arch_size,arch_size, Rb)
 
