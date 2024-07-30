@@ -4,6 +4,7 @@ import numpy as np
 import random
 import math
 import os
+import re
 
 from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
@@ -18,15 +19,16 @@ def qubits_num(Circuit): #Circuit: gates list
 	return num
 
 def CreateCircuitFromQASM(file, path):
-    QASM_file = open(path + file, 'r')
-    iter_f = iter(QASM_file)
-    QASM = ''
-    for line in iter_f: 
-        QASM = QASM + line
+	print(path+file)
+	QASM_file = open(path + file, 'r')
+	iter_f = iter(QASM_file)
+	QASM = ''
+	for line in iter_f: 
+		QASM = QASM + line
     #print(QASM)
-    cir = QuantumCircuit.from_qasm_str(QASM)
-    QASM_file.close    
-    return cir
+	cir = QuantumCircuit.from_qasm_str(QASM)
+	QASM_file.close    
+	return cir
 
 def get_rx_all_mapping(graph_max, G):
 	sub_graph = rx.networkx_converter(graph_max)
@@ -629,8 +631,8 @@ def set_parameters(default):
 		para['T_cz'] = 0.2  #us
 		para['T_eff'] = 1.47e6 #us
 		para['T_trans'] = 20 # us
-		para['AOD_width'] = 19 #um
-		para['AOD_height'] = 15 #um
+		para['AOD_width'] = 6 #um
+		para['AOD_height'] = 6 #um
 		para['Move_speed'] = 0.55 #um/us
 		para['F_cz'] = 0.995 
 
@@ -656,19 +658,87 @@ def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
 	Fidelity = math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
 	return t_idle, Fidelity
 
-def get_embeddings(partition_gates, coupling_graph, num_q):
+def get_embeddings(partition_gates, coupling_graph, num_q, initial_mapping=None):
 	embeddings = []
-	for i in range(len(partition_gates)):
+	begin_index = 0
+	if initial_mapping:
+		embeddings.append(initial_mapping)
+		begin_index = 1
+	for i in range(begin_index, len(partition_gates)):
 		tmp_graph = nx.Graph()
 		tmp_graph.add_edges_from(partition_gates[i])
 		next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
 		next_embedding = map2list(next_embedding,num_q)
 		embeddings.append(next_embedding)
 
-	for i in range(len(embeddings)):
+	for i in range(begin_index, len(embeddings)):
 		indices = [index for index, value in enumerate(embeddings[i]) if value == -1]
 		if indices:
 			embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
 
 	return embeddings
 
+def qasm_to_map(filename):
+
+	with open(filename, 'r') as file:
+		lines = file.readlines()
+	
+    # 确保行数为偶数
+	if len(lines) % 2 != 0:
+		raise ValueError("文件内容的行数应为偶数，以便正确配对比特和映射位置。")
+	qubit_pattern = re.compile(r"Qubit\(QuantumRegister\((\d+), 'q'\), (\d+)\)")
+	match = qubit_pattern.search(lines[0].strip())
+	num_q = int(match.group(1))
+	mapping = [-1]*num_q
+    # 遍历每对行
+	for i in range(0, len(lines), 2):
+        # 读取比特行和映射位置行
+		qubit_line = lines[i].strip()
+		position_line = lines[i+1].strip()
+        
+        # 解析比特索引
+		match = qubit_pattern.search(qubit_line)
+		if match:
+			num_q = int(match.group(1))
+			bit_index = int(match.group(2))
+		else:
+			raise ValueError(f"无法从比特行提取索引: {qubit_line}")
+        # 解析映射位置
+		try:
+			position = eval(position_line)
+		except Exception as e:
+			raise ValueError(f"解析映射位置时出错: {position_line}") from e
+        
+        # 扩展列表到足够的长度
+		mapping[bit_index] = position
+    
+	return mapping
+
+def compute_fidelity_tetris(cycle_file, qasm_file, path):
+
+	with open(path+cycle_file, 'r') as cyc_file:
+		cyc_lines = cyc_file.readlines()
+
+	last_line = cyc_lines[-1].strip()
+	last_gate = list(map(int, last_line.split()))
+
+	cnot_count = 0
+	swap_count = 0
+	circ = CreateCircuitFromQASM(qasm_file, path)
+	for instruction, qargs, cargs in circ.data:
+		if instruction.name == 'cx':  # CNOT 门
+			cnot_count += 1
+		elif instruction.name == 'swap':  # SWAP 门
+			swap_count += 1
+
+	num_q = len(circ.qubits)
+	gate_num = cnot_count + 3*swap_count
+	
+	para = set_parameters(True)
+	gate_cycle = (last_gate[0]+1)/2
+	t_total = gate_cycle*para['T_cz']
+	t_idle = num_q * t_total - gate_num * para['T_cz']
+
+	Fidelity =math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
+	print(Fidelity)
+	return Fidelity, swap_count, gate_cycle

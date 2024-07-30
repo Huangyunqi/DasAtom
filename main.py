@@ -9,11 +9,29 @@ from SA import find_map_SA
 
 if __name__ == "__main__":
 
+	'''path = "results/tetris_gcc/tetris(map from tetris)/"
+	files = os.listdir(path)
+	wb = Workbook()
+	ws = wb.active
+	ws.append(['circuit name', 'Fidelity', 'inserted SWAP', 'gate_cycle'])
+	for num_file in range(len(files)):
+		file_name = files[num_file]
+		if not file_name.endswith('.qasm'):
+			continue
+		print(file_name)
+		cycle_file = file_name+'.txt'
+		print(cycle_file)
+		Fidelity, swap_count, gate_cycle = compute_fidelity_tetris(cycle_file, file_name, path)
+		ws.append([file_name, Fidelity, swap_count, gate_cycle])
+	wb.save('results/yq_test/tetris_new_copy.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path = "Data/Q_tetris/"
+	path = "Data/Tetris_cz/"
 	files = os.listdir(path)
 	#file_name = 'qft_50.qasm'
+	total_wb = Workbook()
+	total_ws = total_wb.active
+	total_ws.append(['file name', 'fidelity', 'movement times', 'gate cycles', 'partitions'])
 	for num_file in range(len(files)):
 		#file_name = 'qft_12.qasm'.format(num_file)
 		file_name = files[num_file]
@@ -22,9 +40,9 @@ if __name__ == "__main__":
 		ws = wb.active
 		log = []
 		total_time = time.time()
-		circuit = CreateCircuitFromQASM(file_name, path)
+		cz_circuit = CreateCircuitFromQASM(file_name, path)
 	#transform to cz-based circuit
-		cz_circuit = transpile(circuit, basis_gates=['cz', 'rx', 'ry', 'rz', 'h', 't'])
+		#cz_circuit = transpile(circuit, basis_gates=['cz', 'rx', 'ry', 'rz', 'h', 't'])
 	#cz gates list
 		gate_2q_list = get_2q_gates_list(cz_circuit)
 	#print(gate_2q_list)
@@ -34,16 +52,20 @@ if __name__ == "__main__":
 	#obtain the qubits number
 		num_q = qubits_num(gate_2q_list)
 		print("Num of gates", gate_num)
-
-		arch_size = 2*math.ceil(math.sqrt(num_q))
+		log.append(['Num of gate', gate_num])
+		arch_size = math.ceil(math.sqrt(num_q))
 		#Rb = math.sqrt(2)
+		log.append(['arch_size', 'sqrt(num_q)', arch_size])
 		Rb = 2
+		log.append(['Rb', '2'])
 	#obtain the corresponding coupling_graph 
 		coupling_graph = generate_grid_with_Rb(arch_size,arch_size, Rb)
 
 	#obtain the gates partition
 		time_part = time.time()
+		#ini_map = qasm_to_map('results/initial_map/'+file_name)
 		partition_gates = parition_from_DAG(dag, coupling_graph)
+		#partition_gates = partition_from_ini(dag, coupling_graph, ini_map)
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
 		log.append(["partition time", time_part1-time_part])
@@ -81,11 +103,12 @@ if __name__ == "__main__":
 		initial_map["gates"] = gate_in_layer(partition_gates[0])
 		layers.append(initial_map)
 		all_movements = []
+		total_paralled = []
 		for num in range(len(embeddings) - 1):
 			log.append([str(embeddings[num])])
 			for gates in parallel_gates[num]:
 				log.append([str(gates[it]) for it in range(len(gates))])
-
+				total_paralled.append(gates)
 
 			current_map = embeddings[num]
 			next_map = embeddings[num + 1]
@@ -134,20 +157,22 @@ if __name__ == "__main__":
 			log.append([str(embeddings[0])])
 			for gates in parallel_gates[0]:
 				log.append([str(gates[it]) for it in range(len(gates))])
-		t_idle, Fidelity = compute_fidelity(log, all_movements, num_q, gate_num)
+		t_idle, Fidelity = compute_fidelity(total_paralled, all_movements, num_q, gate_num)
 
 		print("Fidelity is:", Fidelity)
 		log.append(["Fidelity:", Fidelity])
 		log.append(["t_idle:", t_idle])
-
+		log.append(["Movement times", len(all_movements)])
+		log.append(["parallel times", len(total_paralled)])
+		log.append(["partitions", len(embeddings)])
 		total_time1 = time.time()
 		log.append(["total time:", total_time1-total_time])
 		for item in log:
 			#print(item)
 			ws.append(item)
 
-
-		save_file = 'results/yq_test/Tetris_new/{}_rb{}_archsize{}.xlsx'.format(file_name, Rb, arch_size)
+		total_ws.append([file_name, Fidelity, len(all_movements), len(total_paralled), len(embeddings)])
+		save_file = 'results/yq_test/Tetris_own_map/{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file)
 		wb.save(save_file)
 
@@ -170,7 +195,7 @@ if __name__ == "__main__":
 		codegen = CodeGen(data)
 		program = codegen.builder(no_transfer=False)
 		program = program.emit_full()
- 
+	total_wb.save('results/yq_test/total_tet_our_mini_dis_arch1.xlsx')
 		#if global_dict["full_code"]:
 		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
 		#		json.dump(program, f)
@@ -178,7 +203,7 @@ if __name__ == "__main__":
 		#			instruction["state"] = {}
     # optional
     # run following command in terminal:
-    # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"
+    # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"'''
 
 
 
