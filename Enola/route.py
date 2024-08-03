@@ -1,7 +1,7 @@
 import json
 import math
 import copy
-from codegen import CodeGen, global_dict
+from .codegen import CodeGen, global_dict
 from networkx import maximal_independent_set, Graph
 
 def compatible_2D(a: list[int], b: list[int]) -> bool:
@@ -214,11 +214,9 @@ class route:
 
     def initialize_data(self):
         initial_layer = map_to_layer(self.embeddings[0])
-        initial_layer["gates"] = gate_in_layer(self.partition_gates[0])
-        self.layers.append(initial_layer)
+        initial_layer["gates"] = gate_in_layer(self.gate_2q_list[0])
         program = self.generate_program([initial_layer])
-        self.program = []
-        self.program += program
+        self.program = program
 
     def generate_program(self, layers:list):
         data = {
@@ -232,6 +230,7 @@ class route:
         data['n_r'] = self.arch_size[0]
         data['n_c'] = self.arch_size[1]
         codeGen = CodeGen(data)
+        print(data)
         program = codeGen.builder(no_transfer=False)
         return program.emit_full()
 
@@ -248,7 +247,7 @@ class route:
         
         layers = self.handle_violations(violations, movements, sorted_keys, current_pos)
         layers[len(layers)-1]["gates"] = gate_in_layer(self.gate_2q_list[next_pos])
-        return self.generate_program(layers)[:2]
+        return self.generate_program(layers)[2:]
 
     def handle_violations(self,violations,movements,sorted_keys,current_pos):
         current_layer = map_to_layer(self.embeddings[current_pos])
@@ -260,8 +259,8 @@ class route:
             for q in range(self.num_q):
                 if new_layer["qubits"][q]["a"] == 1:
                     current_layer["qubits"][q] = next_layer["qubits"][q]
-        print(f"layers:{layers}")
-        print(f"last later:{current_layer}")
+        # print(f"layers:{layers}")
+        # print(f"last later:{current_layer}")
         if movements:
             for move_qubit in movements:
                 for qubit in current_layer["qubits"]:

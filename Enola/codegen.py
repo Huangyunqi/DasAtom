@@ -1328,7 +1328,7 @@ class CodeGen():
         self.n_t = len(self.layers)
         # print(self.n_t)
 
-        """change of convention. In solve() and the SMT model, a/c/r_s govern
+        r"""change of convention. In solve() and the SMT model, a/c/r_s govern
         the movement from stage s to stage s+1, i.e.,
             ----------- x/y_0 
             | a/c/r_0 |
