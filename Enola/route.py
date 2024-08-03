@@ -3,6 +3,10 @@ import math
 import copy
 from .codegen import CodeGen, global_dict
 from networkx import maximal_independent_set, Graph
+from typing import Sequence, Mapping, Any
+
+
+global_dict["full_code"] = True
 
 def compatible_2D(a: list[int], b: list[int]) -> bool:
     """
@@ -45,11 +49,11 @@ def maximalis_solve_sort(n: int, edges: list[tuple[int]], nodes: set[int]) -> li
 
     Parameters:
     n (int): Number of nodes in the graph. The nodes were expressed by integers from 0 to n-1.
-    edges (list[tuple[int]]): List of edges in the graph, where each edge is a tuple of two nodes.
+    edges (list[tuple[int]]): list of edges in the graph, where each edge is a tuple of two nodes.
     nodes (set[int]): Set of nodes to consider for the maximal independent set.
 
     Returns:
-    list[int]: List of nodes in the maximal independent set.
+    list[int]: list of nodes in the maximal independent set.
     """
     # Initialize conflict status for each node
     is_node_conflict = [False for _ in range(n)]
@@ -78,10 +82,10 @@ def maximalis_solve(nodes:list[int], edges:list[tuple[int]])-> list[int]:
 
     Parameters:
     n (int): Number of nodes in the graph. The nodes were expressed by integers from 0 to n-1.
-    edges (list[tuple[int]]): List of edges in the graph.
+    edges (list[tuple[int]]): list of edges in the graph.
 
     Returns:
-    list[int]: List of nodes in the maximal independent set.
+    list[int]: list of nodes in the maximal independent set.
     """
     G = Graph()
     for i in nodes:
@@ -93,13 +97,13 @@ def maximalis_solve(nodes:list[int], edges:list[tuple[int]])-> list[int]:
     result = maximal_independent_set(G, seed=0) 
     return result
 
-def get_movement(current_map: list, next_map: list, window_size=None) -> map:
+def get_movements(current_map: list, next_map: list, window_size=None) -> map:
     """
     Determines the movements of qubits between two maps.
 
     Parameters:
-    current_map (list): List of current positions of qubits.
-    next_map (list): List of next positions of qubits.
+    current_map (list): list of current positions of qubits.
+    next_map (list): list of next positions of qubits.
     window_size (optional): Size of the window for movement calculations.
 
     Returns:
@@ -120,8 +124,8 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
 
     Parameters:
     movements (dict): Dictionary of qubit movements.
-    violations (list): List of violations to be resolved.
-    sorted_keys (list): List of qubit keys sorted based on priority.
+    violations (list): list of violations to be resolved.
+    sorted_keys (list): list of qubit keys sorted based on priority.
     routing_strategy (str): Strategy to use for routing ('maximalis' or 'maximalis_sort').
     num_q (int): Number of qubits.
     layer (dict): Dictionary representing the current layer configuration.
@@ -152,12 +156,12 @@ def solve_violations(movements, violations, sorted_keys, routing_strategy, num_q
     
     return layer, movements, violations
 
-def map_to_layer(map: list) -> map:
+def map_to_layer(map: list) -> dict[str, list]:
     """
     Converts a list of qubit positions to a layer dictionary.
 
     Parameters:
-    map (list): List of qubit positions.
+    map (list): list of qubit positions.
 
     Returns:
     map: Dictionary representing the layer configuration.
@@ -174,93 +178,141 @@ def map_to_layer(map: list) -> map:
         "gates": []
     }
 
-def gate_in_layer(gate_list:list[list[int]])->list[map]:
+def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
     res = []
     for i in range(len(gate_list)-1,-1,-1):
         assert len(gate_list[i]) == 2
         res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
     return res
 
-class route:
-    def __init__(self, num_q: int , embeddings: list[list[int]] ,gate_2q_list: list[list[int]], arch_size: list[int], routing_strategy="maximalis")->None:
-        self.num_q = num_q
-        # Iterate over each embedding in the list of embeddings
-        for embed in embeddings:
-            # Ensure each embedding contains locations for all qubits
-            assert len(embed) == num_q, f"Each embedding must contain locations for all {num_q} qubits."
-
-            # Check each location within the embedding
-            for loc in embed:
-                # Ensure each location is a list of two elements (x and y coordinates)
-                assert len(loc) == 2, "Each location must be a list containing exactly two coordinates: [x, y]."
+class QuantumRouter:
+    def __init__(self, num_qubits: int, embeddings: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
+        """
+        Initialize the QuantumRouter object with the given parameters.
+        
+        Parameters:
+        num_qubits (int): Number of qubits.
+        embeddings (list[list[list[int]]]): Embeddings for the qubits.
+        gate_list (list[list[int]]): list of two-qubit gates.
+        arch_size (list[int]): Architecture size as [x, y].
+        routing_strategy (str): Strategy used for routing.
+        """
+        self.num_qubits = num_qubits
+        self.validate_embeddings(embeddings)
         self.embeddings = embeddings
-        # Ensure the number of embeddings matches the number of two-qubit gates
-        assert len(embeddings) == len(gate_2q_list), (
-            "The number of embeddings should match the number of two-qubit gates in gate_2q_list."
-        )
-        self.gate_2q_list = gate_2q_list
         
-        # Ensure the architecture size list contains exactly two elements for dimensions x and y
-        assert len(arch_size) == 2, "Architecture size should be specified as a list with two elements: [x, y]."
-
-        # Ensure the total number of locations in the architecture is sufficient to accommodate all qubits
-        assert arch_size[0] * arch_size[1] >= num_q, (
-            f"The product of the architecture dimensions x and y must be at least {num_q} to accommodate all qubits; "
-            f"currently, it is {arch_size[0] * arch_size[1]}."
-        )
+        assert len(embeddings) == len(gate_list), "The number of embeddings should match the number of two-qubit gates in gate_list."
+        self.gate_list = gate_list
+        
+        self.validate_architecture_size(arch_size)
         self.arch_size = arch_size
-        
         self.routing_strategy = routing_strategy
 
-    def initialize_data(self):
-        initial_layer = map_to_layer(self.embeddings[0])
-        initial_layer["gates"] = gate_in_layer(self.gate_2q_list[0])
-        program = self.generate_program([initial_layer])
-        self.program = program
+    def validate_embeddings(self, embeddings: list[list[list[int]]]) -> None:
+        """
+        Validate the embeddings to ensure they contain locations for all qubits.
+        
+        Parameters:
+        embeddings (list[list[list[int]]]): Embeddings for the qubits.
+        """
+        for embedding in embeddings:
+            assert len(embedding) == self.num_qubits, f"Each embedding must contain locations for all {self.num_qubits} qubits."
+            for loc in embedding:
+                assert len(loc) == 2, "Each location must be a list containing exactly two coordinates: [x, y]."
 
-    def generate_program(self, layers:list):
+    def validate_architecture_size(self, arch_size: list[int]) -> None:
+        """
+        Validate the architecture size to ensure it can accommodate all qubits.
+        
+        Parameters:
+        arch_size (list[int]): Architecture size as [x, y].
+        """
+        assert len(arch_size) == 2, "Architecture size should be specified as a list with two elements: [x, y]."
+        assert arch_size[0] * arch_size[1] >= self.num_qubits, (
+            f"The product of the architecture dimensions x and y must be at least {self.num_qubits} to accommodate all qubits; "
+            f"currently, it is {arch_size[0] * arch_size[1]}."
+        )
+
+    def initialize_program(self) -> None:
+        """
+        Initialize the program with the initial layer and gates.
+        """
+        initial_layer = map_to_layer(self.embeddings[0])
+        initial_layer["gates"] = gates_in_layer(self.gate_list[0])
+        self.program = self.generate_program([initial_layer])
+
+    def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
+        """
+        Generate the program from the given layers.
+        
+        Parameters:
+        layers (list[dict[str, Any]]): list of layers.
+        
+        Returns:
+        str: The generated program.
+        """
         data = {
             "no_transfer": False,
             "layers": layers,
-            "n_q": self.num_q,
-            "g_q": self.gate_2q_list,
+            "n_q": self.num_qubits,
+            "g_q": self.gate_list,
+            "n_x": self.arch_size[0],
+            "n_y": self.arch_size[1],
+            "n_r": self.arch_size[0],
+            "n_c": self.arch_size[1]
         }
-        data['n_x'] = self.arch_size[0]
-        data['n_y'] = self.arch_size[1]
-        data['n_r'] = self.arch_size[0]
-        data['n_c'] = self.arch_size[1]
-        codeGen = CodeGen(data)
-        print(data)
-        program = codeGen.builder(no_transfer=False)
+        code_gen = CodeGen(data)
+        program = code_gen.builder(no_transfer=False)
         return program.emit_full()
 
-    def process_embeddings(self):
-        for i in range(len(self.embeddings) - 1):
-            program = self.resolve_movements(i)
-            self.program += program
+    def process_all_embeddings(self) -> None:
+        """
+        Process all embeddings to resolve movements and update the program.
+        """
+        for current_pos in range(len(self.embeddings) - 1):
+            movement_program = self.resolve_movements(current_pos)
+            self.program += movement_program
 
-    def resolve_movements(self, current_pos):
-        next_pos = current_pos + 1
-        movements = get_movement(self.embeddings[current_pos],self.embeddings[current_pos+1])
-        sorted_keys = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
-        violations = self.check_violations(sorted_keys, movements)
+    def resolve_movements(self, current_pos: int) -> str:
+        """
+        Resolve movements between the current and next embeddings.
         
-        layers = self.handle_violations(violations, movements, sorted_keys, current_pos)
-        layers[len(layers)-1]["gates"] = gate_in_layer(self.gate_2q_list[next_pos])
+        Parameters:
+        current_pos (int): The current position in the embeddings list.
+        
+        Returns:
+        str: The program for the resolved movements.
+        """
+        next_pos = current_pos + 1
+        movements = get_movements(self.embeddings[current_pos], self.embeddings[next_pos])
+        sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
+        violations = self.check_violations(sorted_movements, movements)
+        layers = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        layers[-1]["gates"] = gates_in_layer(self.gate_list[next_pos])
         return self.generate_program(layers)[2:]
 
-    def handle_violations(self,violations,movements,sorted_keys,current_pos):
+    def handle_violations(self, violations: list[tuple[int, int]], movements: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[dict[str, list]]:
+        """
+        Handle violations and update the layers accordingly.
+        
+        Parameters:
+        violations (list[tuple[int, int]]): list of violations.
+        movements (dict[int, tuple[int, int, int, int]]): Movements between embeddings.
+        sorted_movements (list[int]): Sorted list of movements.
+        current_pos (int): The current position in the embeddings list.
+        
+        Returns:
+        list[dict[str, Any]]: Updated layers.
+        """
         current_layer = map_to_layer(self.embeddings[current_pos])
-        next_layer = map_to_layer(self.embeddings[current_pos+1])
+        next_layer = map_to_layer(self.embeddings[current_pos + 1])
         layers = []
         while violations:
-            new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,self.routing_strategy,self.num_q,current_layer)
+            new_layer, movements, violations = solve_violations(movements, violations, sorted_movements, self.routing_strategy, self.num_qubits, current_layer)
             layers.append(new_layer)
-            for q in range(self.num_q):
-                if new_layer["qubits"][q]["a"] == 1:
-                    current_layer["qubits"][q] = next_layer["qubits"][q]
-        # print(f"layers:{layers}")
-        # print(f"last later:{current_layer}")
+            for qubit in range(self.num_qubits):
+                if new_layer["qubits"][qubit]["a"] == 1:
+                    current_layer["qubits"][qubit] = next_layer["qubits"][qubit]
         if movements:
             for move_qubit in movements:
                 for qubit in current_layer["qubits"]:
@@ -268,22 +320,42 @@ class route:
                         qubit["a"] = 1
             layers.append(current_layer)
         return layers
-    
-    def check_violations(self, sorted_keys, movements):
+
+    def check_violations(self, sorted_movements: list[int], movements: dict[int, tuple[int, int, int, int]]) -> list[tuple[int, int]]:
+        """
+        Check for violations between movements.
+        
+        Parameters:
+        sorted_movements (list[int]): Sorted list of movements.
+        movements (dict[int, tuple[int, int, int, int]]): Movements between embeddings.
+        
+        Returns:
+        list[tuple[int, int]]: list of violations.
+        """
         violations = []
-        for i_key in range(len(sorted_keys)):
-            for j_key in range(i_key + 1, len(sorted_keys)):
-                if not compatible_2D(movements[sorted_keys[i_key]], movements[sorted_keys[j_key]]):
-                    violations.append((sorted_keys[i_key], sorted_keys[j_key]))
+        for i in range(len(sorted_movements)):
+            for j in range(i + 1, len(sorted_movements)):
+                if not compatible_2D(movements[sorted_movements[i]], movements[sorted_movements[j]]):
+                    violations.append((sorted_movements[i], sorted_movements[j]))
         return violations
 
-    def save_program(self, filename):
+    def save_program(self, filename: str) -> None:
+        """
+        Save the generated program to a file.
+        
+        Parameters:
+        filename (str): The filename to save the program.
+        """
         with open(filename, 'w') as file:
             json.dump(self.program, file)
-            
-    def run(self, filename: str)-> None:
-        self.initialize_data()
-        self.process_embeddings()
-        self.save_program(filename)
-    # def animation(self):
+
+    def run(self, filename: str) -> None:
+        """
+        Run the QuantumRouter to initialize, process embeddings, and save the program.
         
+        Parameters:
+        filename (str): The filename to save the program.
+        """
+        self.initialize_program()
+        self.process_all_embeddings()
+        self.save_program(filename)      
