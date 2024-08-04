@@ -5,6 +5,7 @@ import random
 import math
 import os
 import re
+import json
 
 from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
@@ -25,7 +26,6 @@ def CreateCircuitFromQASM(file, path):
 	QASM = ''
 	for line in iter_f: 
 		QASM = QASM + line
-    #print(QASM)
 	cir = QuantumCircuit.from_qasm_str(QASM)
 	QASM_file.close    
 	return cir
@@ -599,10 +599,17 @@ def check_intersect(gate1, gate2, coupling_graph, mapping):
 	else:
 		return False
 
+def check_intersect_ver2(gate1, gate2, coupling_graph, mapping, r_re):
+	if euclidean_distance(mapping[gate1[0]], mapping[gate2[0]]) > r_re and \
+		euclidean_distance(mapping[gate1[0]], mapping[gate2[1]]) > r_re and \
+		euclidean_distance(mapping[gate1[1]], mapping[gate2[0]]) > r_re and \
+		euclidean_distance(mapping[gate1[1]], mapping[gate2[1]]) > r_re:
+		return True
+	else:
+		return False
 
-def get_parallel_gates(gates, coupling_graph, mapping):
+def get_parallel_gates(gates, coupling_graph, mapping, r_re):
 	gates_list = []
-	gates_rg = {}
 
 	gates_copy = deepcopy(gates)
 	while(len(gates_copy) != 0):
@@ -611,7 +618,7 @@ def get_parallel_gates(gates, coupling_graph, mapping):
 		for i in range(1, len(gates_copy)):
 			flag = True
 			for gate in parallel_gates:
-				if check_intersect(gate, gates_copy[i], coupling_graph, mapping):
+				if check_intersect_ver2(gate, gates_copy[i], coupling_graph, mapping, r_re):
 					continue
 				else:
 					flag = False
@@ -629,10 +636,10 @@ def set_parameters(default):
 	para = {}
 	if default:
 		para['T_cz'] = 0.2  #us
-		para['T_eff'] = 1.47e6 #us
+		para['T_eff'] = 1.5e6 #us
 		para['T_trans'] = 20 # us
-		para['AOD_width'] = 6 #um
-		para['AOD_height'] = 6 #um
+		para['AOD_width'] = 3 #um
+		para['AOD_height'] = 3 #um
 		para['Move_speed'] = 0.55 #um/us
 		para['F_cz'] = 0.995 
 
@@ -742,3 +749,17 @@ def compute_fidelity_tetris(cycle_file, qasm_file, path):
 	Fidelity =math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
 	print(Fidelity)
 	return Fidelity, swap_count, gate_cycle
+
+def write_data(data, path, file_name): 
+	with open(path+file_name, 'w') as file:
+		for sublist in data:
+        # 将每个子列表转换为 JSON 格式的字符串，并写入文件
+			file.write(json.dumps(sublist) + '\n')
+
+def read_data(data, path, file_name):
+	with open(path+file_name, 'r') as file:
+    # 逐行读取文件
+		data = [json.loads(line) for line in file]
+
+# 输出读取的数据
+	return data

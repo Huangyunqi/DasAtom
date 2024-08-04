@@ -26,14 +26,19 @@ if __name__ == "__main__":
 	wb.save('results/yq_test/tetris_new_copy.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path = "Data/Tetris_cz/"
+	path_type = 'two_local_random_cz'
+	path = "Data/{}/circuits/".format(path_type)
+	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
+	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
+	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
 	files = os.listdir(path)
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
 	total_ws.append(['file name', 'fidelity', 'movement times', 'gate cycles', 'partitions'])
 	for num_file in range(len(files)):
-		#file_name = 'qft_12.qasm'.format(num_file)
+	#for num_file in [0]:
+		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
 		file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
@@ -58,6 +63,8 @@ if __name__ == "__main__":
 		log.append(['arch_size', 'sqrt(num_q)', arch_size])
 		Rb = 2
 		log.append(['Rb', '2'])
+		r_re = 4 
+		log.append(['r_re', '4'])
 	#obtain the corresponding coupling_graph 
 		coupling_graph = generate_grid_with_Rb(arch_size,arch_size, Rb)
 
@@ -65,6 +72,7 @@ if __name__ == "__main__":
 		time_part = time.time()
 		#ini_map = qasm_to_map('results/initial_map/'+file_name)
 		partition_gates = parition_from_DAG(dag, coupling_graph)
+		write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		#partition_gates = partition_from_ini(dag, coupling_graph, ini_map)
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
@@ -86,11 +94,11 @@ if __name__ == "__main__":
 		print("partition number:", len(partition_gates))
 		log.append(["find embeddings time", time_embed1-time_embed])
 
-
+		write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		parallel_gates = []
 		time_paral = time.time()
 		for i in range(len(partition_gates)):
-			gates = get_parallel_gates(partition_gates[i], coupling_graph, embeddings[i])
+			gates = get_parallel_gates(partition_gates[i], coupling_graph, embeddings[i], r_re)
 			parallel_gates.append(gates)
 		time_paral1 = time.time()
 		log.append(["find parallel_gates time", time_paral1-time_paral])
@@ -153,12 +161,13 @@ if __name__ == "__main__":
 			log.append([str(embeddings[num+1])])
 			for gates in parallel_gates[num+1]:
 				log.append([str(gates[it]) for it in range(len(gates))])
+				total_paralled.append(gates)
 		else:
 			log.append([str(embeddings[0])])
 			for gates in parallel_gates[0]:
 				log.append([str(gates[it]) for it in range(len(gates))])
+				total_paralled.append(gates)
 		t_idle, Fidelity = compute_fidelity(total_paralled, all_movements, num_q, gate_num)
-
 		print("Fidelity is:", Fidelity)
 		log.append(["Fidelity:", Fidelity])
 		log.append(["t_idle:", t_idle])
@@ -167,12 +176,18 @@ if __name__ == "__main__":
 		log.append(["partitions", len(embeddings)])
 		total_time1 = time.time()
 		log.append(["total time:", total_time1-total_time])
+		para = set_parameters(True)
+		log_para = []
+		for key, value in para.items():
+			log_para.append(str(key))
+			log_para.append(str(value))
+		log.append(log_para)
 		for item in log:
 			#print(item)
 			ws.append(item)
 
 		total_ws.append([file_name, Fidelity, len(all_movements), len(total_paralled), len(embeddings)])
-		save_file = 'results/yq_test/Tetris_own_map/{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
+		save_file = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file)
 		wb.save(save_file)
 
@@ -195,7 +210,13 @@ if __name__ == "__main__":
 		codegen = CodeGen(data)
 		program = codegen.builder(no_transfer=False)
 		program = program.emit_full()
-	total_wb.save('results/yq_test/total_tet_our_mini_dis_arch1.xlsx')
+	para = set_parameters(True)
+	log_para = []
+	for key, value in para.items():
+		log_para.append(str(key))
+		log_para.append(str(value))
+	total_ws.append(log_para)
+	total_wb.save(path_result+'total_tet_our_mini_dis_arch1.xlsx')
 		#if global_dict["full_code"]:
 		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
 		#		json.dump(program, f)
