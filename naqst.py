@@ -763,3 +763,34 @@ def read_data(data, path, file_name):
 
 # 输出读取的数据
 	return data
+
+def get_circuit_from_json(num_qubits: int) -> QuantumCircuit:
+    """
+    Load a quantum circuit from a JSON file based on the number of qubits.
+
+    Args:
+        num_qubits (int): The number of qubits for the desired circuit.
+
+    Returns:
+        QuantumCircuit: The loaded quantum circuit.
+
+    Raises:
+        ValueError: If no circuit configuration is found for the specified number of qubits.
+    """
+    # Path to the JSON file containing the circuits
+    json_file_path = "./Enola/graphs.json"
+    with open(json_file_path, "r") as file:
+        data = json.load(file)
+    circuit_data = data.get(str(num_qubits))
+
+    # Check if the circuit configuration exists
+    if circuit_data:
+        quantum_circuit = QuantumCircuit(num_qubits)
+        # Add gates to the circuit based on the data
+        for layer in circuit_data:
+            for gate in layer:
+                quantum_circuit.cz(gate[0], gate[1])
+        return quantum_circuit
+    else:
+        # Raise an error if no configuration is found
+        raise ValueError(f"No circuit configuration for {num_qubits} qubits in graphs.json")
