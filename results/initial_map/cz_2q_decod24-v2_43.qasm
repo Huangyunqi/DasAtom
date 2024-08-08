@@ -1,0 +1,8 @@
+Qubit(QuantumRegister(4, 'q'), 0)
+(1, 0)
+Qubit(QuantumRegister(4, 'q'), 1)
+(1, 1)
+Qubit(QuantumRegister(4, 'q'), 2)
+(0, 0)
+Qubit(QuantumRegister(4, 'q'), 3)
+(0, 1)
