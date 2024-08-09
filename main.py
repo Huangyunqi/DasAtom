@@ -38,8 +38,8 @@ if __name__ == "__main__":
 	total_ws.append(['file name', 'fidelity', 'movement times', 'gate cycles', 'partitions'])
 	for num_file in range(len(files)):
 	#for num_file in [0]:
-		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
-		file_name = files[num_file]
+		file_name = 'cz_2q_twolocalrandom_indep_qiskit_{}.qasm'.format(num_file+5)
+		#file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
