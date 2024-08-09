@@ -101,40 +101,59 @@ if __name__ == "__main__":
     
   # TODO: for the subsequent embeddings, use AOD to move from current embedding to next embedding
     
+		global_dict['full_code'] = True
+
 		window = False
 		window_size = 1000
 		routing_strategy = "maximalis"
+		import copy
+
 		layers = []
 		initial_map = map_to_layer(embeddings[0])
 		initial_map["gates"] = gate_in_layer(partition_gates[0])
+		# print(initial_map)
 		layers.append(initial_map)
+		data = {
+				"no_transfer": False,
+				"layers": layers,
+				"n_q": num_q,
+				"g_q": gate_2q_list,
+		}
+		data['n_x'] = arch_size
+		data['n_y'] = arch_size
+		data['n_r'] = arch_size
+		data['n_c'] = arch_size
+		print(layers)
+		codegen = CodeGen(data)
+		program = codegen.builder(no_transfer=False)
+		program = program.emit_full()
 		for i in range(len(embeddings) - 1):
+			layers = []
 			current_map = embeddings[i]
 			next_map = embeddings[i + 1]
 			last_layer = map_to_layer(current_map)
 			next_layer = map_to_layer(next_map)
-		
 			movements = get_movement(current_map,next_map)
-		# Sort movements by distance in descending order
+			# Sort movements by distance in descending order
 			sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
-		# print(f'sorted_keys:{sorted_keys}')
-		# Check for violations
+			# print(f'sorted_keys:{sorted_keys}')
+			# Check for violations
 			violations = []
-			for i in range(len(sorted_keys)):
-				for j in range(i + 1, len(sorted_keys)):
-					if not compatible_2D(movements[sorted_keys[i]], movements[sorted_keys[j]]):
-						violations.append((sorted_keys[i], sorted_keys[j]))
+			for i_key in range(len(sorted_keys)):
+				for j_key in range(i_key + 1, len(sorted_keys)):
+					if not compatible_2D(movements[sorted_keys[i_key]], movements[sorted_keys[j_key]]):
+						violations.append((sorted_keys[i_key], sorted_keys[j_key]))
 
-		# print(f'Violations: {violations}')
-		
-		# Resolve violations
+			# print(f'Violations: {violations}')
+			# Resolve violations
 			while violations:
 				new_layer,movements,violations = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
 				layers.append(new_layer)
-				for i in range(num_q):
-					if new_layer["qubits"][i]["a"] == 1:
-						last_layer["qubits"][i] = next_layer["qubits"][i]
-				
+				for q in range(num_q):
+					if new_layer["qubits"][q]["a"] == 1:
+						last_layer["qubits"][q] = next_layer["qubits"][q]
+			# print(f"layers:{layers}")
+			# print(f"last later:{last_layer}")
 			if movements:
 				for qubit in movements:
 					move = movements[qubit]
@@ -142,32 +161,26 @@ if __name__ == "__main__":
 						if qubit_["id"] == qubit:
 							qubit_["a"] = 1
 				layers.append(last_layer)
-			layers[-1]["gates"] = gate_in_layer(partition_gates[i+1])
-		# layers.append(next_layer)
-		
-				
-		data = {
-		# "runtime": float(time.time() - start_time),
-		"no_transfer": False,
-		"layers": layers,
-		"n_q": num_q,
-		"g_q": gate_2q_list,
-		}
- 
-		global_dict['full_code'] = True
+			layers[len(layers)-1]["gates"] = gate_in_layer(partition_gates[i+1])
+			# layers.append(next_layer)
 
-		data['n_x'] = arch_size
-		data['n_y'] = arch_size
-		data['n_r'] = arch_size
-		data['n_c'] = arch_size
-	# print("#layers: {}".format(len(data["layers"])))
-	# t_s = time.time()
-		codegen = CodeGen(data)
-		program = codegen.builder(no_transfer=False)
-		program = program.emit_full()
- 
+			print(layers)
+			data = {
+				"no_transfer": False,
+				"layers": layers,
+				"n_q": num_q,
+				"g_q": gate_2q_list,
+			}
+			data['n_x'] = arch_size
+			data['n_y'] = arch_size
+			data['n_r'] = arch_size
+			data['n_c'] = arch_size
+			codegen = CodeGen(data)
+			temp = codegen.builder(no_transfer=False)
+			temp = temp.emit_full()
+			program += temp[2:]
 		if global_dict["full_code"]:
-			with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
+			with open(f"results/full_code/test_{num_q}_{0}_code_full.json", 'w') as f:
 				json.dump(program, f)
 				for instruction in program:
 					instruction["state"] = {}
