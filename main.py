@@ -4,12 +4,13 @@ import math
 import time
 from vfsexp import Vf
 from Enola.codegen import CodeGen, global_dict
+from Enola.route import QuantumRouter
 import json
 from SA import find_map_SA
 
 if __name__ == "__main__":
 
-	'''path = "results/tetris_gcc/tetris(map from tetris)/"
+	'''path = "results/tetris/Wstate_cz/map_us/"
 	files = os.listdir(path)
 	wb = Workbook()
 	ws = wb.active
@@ -23,10 +24,10 @@ if __name__ == "__main__":
 		print(cycle_file)
 		Fidelity, swap_count, gate_cycle = compute_fidelity_tetris(cycle_file, file_name, path)
 		ws.append([file_name, Fidelity, swap_count, gate_cycle])
-	wb.save('results/yq_test/tetris_new_copy.xlsx')'''
+	wb.save(path+'tetris_total.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path_type = 'two_local_random_cz'
+	path_type = 'qft_cz'
 	path = "Data/{}/circuits/".format(path_type)
 	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
 	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
@@ -35,10 +36,11 @@ if __name__ == "__main__":
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
-	total_ws.append(['file name', 'fidelity', 'movement times', 'gate cycles', 'partitions'])
+	total_ws.append(['file name', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions'])
 	for num_file in range(len(files)):
-	#for num_file in [0]:
-		file_name = 'cz_2q_twolocalrandom_indep_qiskit_{}.qasm'.format(num_file+5)
+	#for num_file in [5]:
+		#file_name = 'cz_2q_twolocalrandom_indep_qiskit_{}.qasm'.format(num_file+5)
+		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
 		#file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
@@ -71,9 +73,10 @@ if __name__ == "__main__":
 	#obtain the gates partition
 		time_part = time.time()
 		#ini_map = qasm_to_map('results/initial_map/'+file_name)
-		partition_gates = parition_from_DAG(dag, coupling_graph)
-		write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')
+		#partition_gates = parition_from_DAG(dag, coupling_graph)
+		#write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		#partition_gates = partition_from_ini(dag, coupling_graph, ini_map)
+		partition_gates = read_data(path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
 		log.append(["partition time", time_part1-time_part])
@@ -89,12 +92,13 @@ if __name__ == "__main__":
 
     #for each partition, find a proper embedding
 		time_embed = time.time()
-		embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
+		#embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
+		embeddings = read_data(path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		time_embed1 = time.time()
 		print("partition number:", len(partition_gates))
 		log.append(["find embeddings time", time_embed1-time_embed])
 
-		write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
+		#write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		parallel_gates = []
 		time_paral = time.time()
 		for i in range(len(partition_gates)):
@@ -102,6 +106,12 @@ if __name__ == "__main__":
 			parallel_gates.append(gates)
 		time_paral1 = time.time()
 		log.append(["find parallel_gates time", time_paral1-time_paral])
+
+
+		#route = QuantumRouter(num_q, embeddings, partition_gates, [arch_size, arch_size])
+		#route.run()
+		#all_movements = route.momvents
+		#print(all_movements)
 
 		window = False
 		window_size = 1000
@@ -167,10 +177,11 @@ if __name__ == "__main__":
 			for gates in parallel_gates[0]:
 				log.append([str(gates[it]) for it in range(len(gates))])
 				total_paralled.append(gates)
-		t_idle, Fidelity = compute_fidelity(total_paralled, all_movements, num_q, gate_num)
+		t_idle, Fidelity, move_fidelity = compute_fidelity(total_paralled, all_movements, num_q, gate_num)
 		print("Fidelity is:", Fidelity)
 		log.append(["Fidelity:", Fidelity])
 		log.append(["t_idle:", t_idle])
+		log.append(["move_fidelity", move_fidelity])
 		log.append(["Movement times", len(all_movements)])
 		log.append(["parallel times", len(total_paralled)])
 		log.append(["partitions", len(embeddings)])
@@ -186,10 +197,10 @@ if __name__ == "__main__":
 			#print(item)
 			ws.append(item)
 
-		total_ws.append([file_name, Fidelity, len(all_movements), len(total_paralled), len(embeddings)])
+		total_ws.append([file_name, Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings)])
 		save_file = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file)
-		wb.save(save_file)
+		#wb.save(save_file)
 
 		data = {
 		# "runtime": float(time.time() - start_time),

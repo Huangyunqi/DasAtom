@@ -649,8 +649,10 @@ def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
 	para = set_parameters(True)
 	t_total = 0
 	t_total += (len(parallel_gates) * para['T_cz']) # cz execution time, parallel
+	t_move = 0
 	for move in all_movements:
 		t_total += (4 * para['T_trans']) # pick/drop/pick/drop
+		t_move += (4 * para['T_trans'])
 		max_dis = 0
 		for each_move in move:
 			x1, y1 = each_move[1][0],each_move[1][1]
@@ -660,10 +662,12 @@ def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
 				max_dis = dis
 		max_dis = math.sqrt(max_dis)
 		t_total += (max_dis/para['Move_speed'])
+		t_move += (max_dis/para['Move_speed'])
 
 	t_idle = num_q * t_total - gate_num * para['T_cz']
 	Fidelity = math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
-	return t_idle, Fidelity
+	move_fidelity = math.exp(-t_move/para['T_eff'])
+	return t_idle, Fidelity, move_fidelity
 
 def get_embeddings(partition_gates, coupling_graph, num_q, initial_mapping=None):
 	embeddings = []
@@ -756,7 +760,7 @@ def write_data(data, path, file_name):
         # 将每个子列表转换为 JSON 格式的字符串，并写入文件
 			file.write(json.dumps(sublist) + '\n')
 
-def read_data(data, path, file_name):
+def read_data(path, file_name):
 	with open(path+file_name, 'r') as file:
     # 逐行读取文件
 		data = [json.loads(line) for line in file]
