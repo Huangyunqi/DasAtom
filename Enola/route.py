@@ -236,7 +236,6 @@ class QuantumRouter:
         Process all embeddings to resolve movements and update the program.
         """
         for current_pos in range(len(self.embeddings) - 1):
-            self.momvents.append([])
             movement_program = self.resolve_movements(current_pos)
             assert len(self.momvents[-1]) > 0, "there should be some movements between embeddings"
             self.program += movement_program
@@ -314,6 +313,7 @@ class QuantumRouter:
         current_layer = map_to_layer(self.embeddings[current_pos])
         next_layer = map_to_layer(self.embeddings[current_pos + 1])
         layers = []
+        self.momvents.append([])
         while violations:
             new_layer, movements, violations = self.solve_violations(movements, violations, sorted_movements, current_layer)
             layers.append(new_layer)
@@ -321,6 +321,7 @@ class QuantumRouter:
                 if new_layer["qubits"][qubit]["a"] == 1:
                     current_layer["qubits"][qubit] = next_layer["qubits"][qubit]
         if movements:
+            self.momvents.append([])
             for move_qubit in movements:
                 move = movements[move_qubit]
                 self.momvents[-1].append([move_qubit,(move[0],move[1]),(move[2],move[3])])
