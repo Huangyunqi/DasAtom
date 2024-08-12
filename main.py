@@ -27,7 +27,7 @@ if __name__ == "__main__":
 	wb.save(path+'tetris_total.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path_type = 'qft_cz'
+	path_type = 'Tetris_cz'
 	path = "Data/{}/circuits/".format(path_type)
 	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
 	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
@@ -36,12 +36,12 @@ if __name__ == "__main__":
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
-	total_ws.append(['file name', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions'])
+	total_ws.append(['file name','Qubits','CZ_gates', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
 	for num_file in range(len(files)):
 	#for num_file in [5]:
 		#file_name = 'cz_2q_twolocalrandom_indep_qiskit_{}.qasm'.format(num_file+5)
-		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
-		#file_name = files[num_file]
+		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
+		file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
@@ -73,10 +73,10 @@ if __name__ == "__main__":
 	#obtain the gates partition
 		time_part = time.time()
 		#ini_map = qasm_to_map('results/initial_map/'+file_name)
-		#partition_gates = parition_from_DAG(dag, coupling_graph)
-		#write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')
+		partition_gates = parition_from_DAG(dag, coupling_graph)
+		write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		#partition_gates = partition_from_ini(dag, coupling_graph, ini_map)
-		partition_gates = read_data(path_partitions, file_name.removesuffix(".qasm")+'.txt')
+		#partition_gates = read_data(path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		time_part1 = time.time()
 		print("partition time is, ",time_part1-time_part)
 		log.append(["partition time", time_part1-time_part])
@@ -92,13 +92,13 @@ if __name__ == "__main__":
 
     #for each partition, find a proper embedding
 		time_embed = time.time()
-		#embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
-		embeddings = read_data(path_embeddings, file_name.removesuffix(".qasm")+'.txt')
+		embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
+		#embeddings = read_data(path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		time_embed1 = time.time()
 		print("partition number:", len(partition_gates))
 		log.append(["find embeddings time", time_embed1-time_embed])
 
-		#write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
+		write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		parallel_gates = []
 		time_paral = time.time()
 		for i in range(len(partition_gates)):
@@ -197,10 +197,10 @@ if __name__ == "__main__":
 			#print(item)
 			ws.append(item)
 
-		total_ws.append([file_name, Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings)])
+		total_ws.append([file_name, num_q, gate_num, Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings), total_time1-total_time])
 		save_file = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file)
-		#wb.save(save_file)
+		wb.save(save_file)
 
 		data = {
 		# "runtime": float(time.time() - start_time),
