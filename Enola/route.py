@@ -204,8 +204,7 @@ class QuantumRouter:
         initial_layer = map_to_layer(self.embeddings[0])
         initial_layer["gates"] = gates_in_layer(self.gate_list[0])
         layers.append(initial_layer)
-        self.program = self.generate_program(layers)
-        self.movement_list = []
+        # self.program = self.generate_program(layers)
 
     def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
         """
@@ -236,11 +235,11 @@ class QuantumRouter:
         Process all embeddings to resolve movements and update the program.
         """
         for current_pos in range(len(self.embeddings) - 1):
-            movement_program = self.resolve_movements(current_pos)
-            assert len(self.movement_list[-1]) > 0, "there should be some movements between embeddings"
-            self.program += movement_program
+            movements = self.resolve_movements(current_pos)
+            assert len(movements) > 0, "there should be some movements between embeddings"
+            self.movement_list.append(movements)
 
-    def solve_violations(self, movements, violations, sorted_keys, layer):
+    def solve_violations(self, movements, violations, sorted_keys):
         """
         Resolves violations in qubit movements based on the routing strategy.
 
@@ -257,29 +256,22 @@ class QuantumRouter:
             resolution_order = maximalis_solve(sorted_keys, violations)
         else:
             resolution_order = maximalis_solve_sort(self.num_q, violations, sorted_keys)
-        
         # print(f'Resolution Order: {resolution_order}')
-        
-        layer = copy.deepcopy(layer)
+        move_sequence =[]
         for qubit in resolution_order:
             sorted_keys.remove(qubit)
-            
+
             move = movements[qubit]
             # print(self.momvents)
-            self.movement_list[-1].append([qubit,(move[0],move[1]),(move[2],move[3])])
+            move_sequence.append([qubit,(move[0],move[1]),(move[2],move[3])])
             # print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
-            
-            for qubit_ in layer["qubits"]:
-                if qubit_["id"] == qubit:
-                    qubit_["a"] = 1
-            
             # Remove resolved violations
             violations = [v for v in violations if qubit not in v]
             del movements[qubit]
         
-        return layer, movements, violations
+        return movements, violations, move_sequence
 
-    def resolve_movements(self, current_pos: int) -> str:
+    def resolve_movements(self, current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
         """
         Resolve movements between the current and next embeddings.
         
@@ -293,11 +285,10 @@ class QuantumRouter:
         movements = get_movements(self.embeddings[current_pos], self.embeddings[next_pos])
         sorted_movements = sorted(movements.keys(), key=lambda k: math.dist(movements[k][:2], movements[k][2:]))
         violations = self.check_violations(sorted_movements, movements)
-        layers = self.handle_violations(violations, movements, sorted_movements, current_pos)
-        layers[-1]["gates"] = gates_in_layer(self.gate_list[next_pos])
-        return self.generate_program(layers)[2:]
+        move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
+        return move_sequences
 
-    def handle_violations(self, violations: list[tuple[int, int]], movements: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[dict[str, list]]:
+    def handle_violations(self, violations: list[tuple[int, int]], movements: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
         """
         Handle violations and update the layers accordingly.
         
@@ -312,24 +303,16 @@ class QuantumRouter:
         """
         current_layer = map_to_layer(self.embeddings[current_pos])
         next_layer = map_to_layer(self.embeddings[current_pos + 1])
-        layers = []
-        self.movement_list.append([])
+        move_sequences =[]
         while violations:
-            new_layer, movements, violations = self.solve_violations(movements, violations, sorted_movements, current_layer)
-            layers.append(new_layer)
-            for qubit in range(self.num_qubits):
-                if new_layer["qubits"][qubit]["a"] == 1:
-                    current_layer["qubits"][qubit] = next_layer["qubits"][qubit]
+            movements, violations, move_sequence = self.solve_violations(movements, violations, sorted_movements)
+            move_sequences.append(move_sequence)
         if movements:
-            self.movement_list.append([])
             for move_qubit in movements:
                 move = movements[move_qubit]
-                self.movement_list[-1].append([move_qubit,(move[0],move[1]),(move[2],move[3])])
-                for qubit in current_layer["qubits"]:
-                    if qubit["id"] == move_qubit:
-                        qubit["a"] = 1
-            layers.append(current_layer)
-        return layers
+                move_sequences.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
+
+        return move_sequences
 
     def check_violations(self, sorted_movements: list[int], movements: dict[int, tuple[int, int, int, int]]) -> list[tuple[int, int]]:
         """
@@ -349,19 +332,19 @@ class QuantumRouter:
                     violations.append((sorted_movements[i], sorted_movements[j]))
         return violations
 
-    def save_program(self, filename: str) -> None:
-        """
-        Save the generated program to a file.
+    # def save_program(self, filename: str) -> None:
+    #     """
+    #     Save the generated program to a file.
         
-        Parameters:
-        filename (str): The filename to save the program.
-        """
-        with open(filename, 'w') as file:
-            json.dump(self.program, file)
+    #     Parameters:
+    #     filename (str): The filename to save the program.
+    #     """
+    #     with open(filename, 'w') as file:
+    #         json.dump(self.program, file)
 
     def run(self) -> None:
         """
-        Run the QuantumRouter to initialize, process embeddings, and save the program.
+        Run the QuantumRouter to initialize, process embeddings.
         """
-        self.initialize_program()
+        self.movement_list = []
         self.process_all_embeddings()
