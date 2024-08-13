@@ -204,7 +204,7 @@ class QuantumRouter:
         initial_layer = map_to_layer(self.embeddings[0])
         initial_layer["gates"] = gates_in_layer(self.gate_list[0])
         layers.append(initial_layer)
-        # self.program = self.generate_program(layers)
+        return self.generate_program(layers)
 
     def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
         """
@@ -250,7 +250,7 @@ class QuantumRouter:
         layer (dict): Dictionary representing the current layer configuration.
 
         Returns:
-        tuple: Updated layer, remaining movements, and unresolved violations.
+        tuple: remaining movements, unresolved violations and movement sequence to finish movement this time
         """
         if self.routing_strategy == "maximalis":
             resolution_order = maximalis_solve(sorted_keys, violations)
@@ -299,18 +299,18 @@ class QuantumRouter:
         current_pos (int): The current position in the embeddings list.
         
         Returns:
-        list[dict[str, Any]]: Updated layers.
+        list[int, tuple[int, int], tuple[int, int]]: movement sequences.
         """
-        current_layer = map_to_layer(self.embeddings[current_pos])
-        next_layer = map_to_layer(self.embeddings[current_pos + 1])
         move_sequences =[]
         while violations:
             movements, violations, move_sequence = self.solve_violations(movements, violations, sorted_movements)
             move_sequences.append(move_sequence)
         if movements:
+            move_sequence = []
             for move_qubit in movements:
                 move = movements[move_qubit]
-                move_sequences.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
+                move_sequence.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
+            move_sequences.append(move_sequence)
 
         return move_sequences
 
@@ -332,15 +332,38 @@ class QuantumRouter:
                     violations.append((sorted_movements[i], sorted_movements[j]))
         return violations
 
-    # def save_program(self, filename: str) -> None:
-    #     """
-    #     Save the generated program to a file.
-        
-    #     Parameters:
-    #     filename (str): The filename to save the program.
-    #     """
-    #     with open(filename, 'w') as file:
-    #         json.dump(self.program, file)
+    def update_layer(self, layer, movements):
+        new_layer = copy.deepcopy(layer)
+        for qubit, current_pos, next_pos in movements:
+            assert layer["qubits"][qubit]["id"] == qubit, "some error happen during layer generation"
+            assert layer["qubits"][qubit]["x"] == current_pos[0], f"layer have problem with location of qubit {qubit}, in x-axis"
+            assert layer["qubits"][qubit]["y"] == current_pos[1], f"layer have problem with location of qubit {qubit}, in y-axis"
+
+            new_layer["qubits"][qubit]["a"] = 1
+            layer["qubits"][qubit]["x"] = next_pos[0]
+            layer["qubits"][qubit]["y"] = next_pos[1]
+            layer["qubits"][qubit]["c"] = next_pos[0]
+            layer["qubits"][qubit]["r"] = next_pos[1]
+        return new_layer
+
+    def save_program(self, filename: str) -> None:
+        """
+        Save the generated program to a file.
+        Parameters:
+        filename (str): The filename to save the program.
+        """
+        assert filename.endswith('.json'), "program should be saved to a .json file"
+        assert len(self.movement_list) == len(self.embeddings)-1, "before generate program, movement should be finished"
+        program = self.initialize_program()
+        for i,movements in enumerate(self.movement_list):
+            layers = []
+            layer = map_to_layer(self.embeddings[i])
+            for mov in movements:
+                layers.append(self.update_layer(layer,mov))
+            layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
+            program += self.generate_program(layers)[2:]
+        with open(filename, 'w') as file:
+            json.dump(program, file)
 
     def run(self) -> None:
         """
