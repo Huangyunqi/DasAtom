@@ -169,7 +169,7 @@ class QuantumRouter:
         self.validate_architecture_size(arch_size)
         self.arch_size = arch_size
         self.routing_strategy = routing_strategy
-        self.momvents = []
+        self.movement_list = []
 
     def validate_embeddings(self, embeddings: list[list[list[int]]]) -> None:
         """
@@ -205,7 +205,7 @@ class QuantumRouter:
         initial_layer["gates"] = gates_in_layer(self.gate_list[0])
         layers.append(initial_layer)
         self.program = self.generate_program(layers)
-        self.momvents = []
+        self.movement_list = []
 
     def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
         """
@@ -237,7 +237,7 @@ class QuantumRouter:
         """
         for current_pos in range(len(self.embeddings) - 1):
             movement_program = self.resolve_movements(current_pos)
-            assert len(self.momvents[-1]) > 0, "there should be some movements between embeddings"
+            assert len(self.movement_list[-1]) > 0, "there should be some movements between embeddings"
             self.program += movement_program
 
     def solve_violations(self, movements, violations, sorted_keys, layer):
@@ -266,7 +266,7 @@ class QuantumRouter:
             
             move = movements[qubit]
             # print(self.momvents)
-            self.momvents[-1].append([qubit,(move[0],move[1]),(move[2],move[3])])
+            self.movement_list[-1].append([qubit,(move[0],move[1]),(move[2],move[3])])
             # print(f'Move qubit {qubit} from ({move[0]}, {move[1]}) to ({move[2]}, {move[3]})')
             
             for qubit_ in layer["qubits"]:
@@ -313,7 +313,7 @@ class QuantumRouter:
         current_layer = map_to_layer(self.embeddings[current_pos])
         next_layer = map_to_layer(self.embeddings[current_pos + 1])
         layers = []
-        self.momvents.append([])
+        self.movement_list.append([])
         while violations:
             new_layer, movements, violations = self.solve_violations(movements, violations, sorted_movements, current_layer)
             layers.append(new_layer)
@@ -321,10 +321,10 @@ class QuantumRouter:
                 if new_layer["qubits"][qubit]["a"] == 1:
                     current_layer["qubits"][qubit] = next_layer["qubits"][qubit]
         if movements:
-            self.momvents.append([])
+            self.movement_list.append([])
             for move_qubit in movements:
                 move = movements[move_qubit]
-                self.momvents[-1].append([move_qubit,(move[0],move[1]),(move[2],move[3])])
+                self.movement_list[-1].append([move_qubit,(move[0],move[1]),(move[2],move[3])])
                 for qubit in current_layer["qubits"]:
                     if qubit["id"] == move_qubit:
                         qubit["a"] = 1
