@@ -288,9 +288,9 @@ class QuantumRouter:
         move_sequences = self.handle_violations(violations, movements, sorted_movements, current_pos)
         return move_sequences
 
-    def handle_violations(self, violations: list[tuple[int, int]], movements: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
+    def handle_violations(self, violations: list[tuple[int, int]], remained_mov_map: dict[int, tuple[int, int, int, int]], sorted_movements: list[int], current_pos: int) -> list[int, tuple[int, int], tuple[int, int]]:
         """
-        Handle violations and update the layers accordingly.
+        Handle violations and return the movement sequence accordingly.
         
         Parameters:
         violations (list[tuple[int, int]]): list of violations.
@@ -301,20 +301,20 @@ class QuantumRouter:
         Returns:
         list[int, tuple[int, int], tuple[int, int]]: movement sequences.
         """
-        move_sequences =[]
+        movement_sequence =[]
         while violations:
-            movements, violations, move_sequence = self.solve_violations(movements, violations, sorted_movements)
-            move_sequences.append(move_sequence)
-        if movements:
-            move_sequence = []
-            for move_qubit in movements:
-                move = movements[move_qubit]
-                move_sequence.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
-            move_sequences.append(move_sequence)
+            remained_mov_map, violations, movement = self.solve_violations(remained_mov_map, violations, sorted_movements)
+            movement_sequence.append(movement)
+        if remained_mov_map:
+            movement = []
+            for move_qubit in remained_mov_map:
+                move = remained_mov_map.get(move_qubit)
+                movement.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
+            movement_sequence.append(movement)
 
-        return move_sequences
+        return movement_sequence
 
-    def check_violations(self, sorted_movements: list[int], movements: dict[int, tuple[int, int, int, int]]) -> list[tuple[int, int]]:
+    def check_violations(self, sorted_movements: list[int], remained_mov_map: dict[int, tuple[int, int, int, int]]) -> list[tuple[int, int]]:
         """
         Check for violations between movements.
         
@@ -328,7 +328,7 @@ class QuantumRouter:
         violations = []
         for i in range(len(sorted_movements)):
             for j in range(i + 1, len(sorted_movements)):
-                if not compatible_2D(movements[sorted_movements[i]], movements[sorted_movements[j]]):
+                if not compatible_2D(remained_mov_map[sorted_movements[i]], remained_mov_map[sorted_movements[j]]):
                     violations.append((sorted_movements[i], sorted_movements[j]))
         return violations
 
