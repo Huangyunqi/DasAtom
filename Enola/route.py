@@ -302,14 +302,8 @@ class QuantumRouter:
         list[int, tuple[int, int], tuple[int, int]]: movement sequences.
         """
         movement_sequence =[]
-        while violations:
+        while remained_mov_map:
             remained_mov_map, violations, movement = self.solve_violations(remained_mov_map, violations, sorted_movements)
-            movement_sequence.append(movement)
-        if remained_mov_map:
-            movement = []
-            for move_qubit in remained_mov_map:
-                move = remained_mov_map.get(move_qubit)
-                movement.append([move_qubit,(move[0],move[1]),(move[2],move[3])])
             movement_sequence.append(movement)
 
         return movement_sequence
