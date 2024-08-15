@@ -610,26 +610,29 @@ def check_intersect_ver2(gate1, gate2, coupling_graph, mapping, r_re):
 
 def get_parallel_gates(gates, coupling_graph, mapping, r_re):
 	gates_list = []
+	_, dag = gates_list_to_QC(gates)
+	gate_layer_list = get_layer_gates(dag)
 
-	gates_copy = deepcopy(gates)
-	while(len(gates_copy) != 0):
-		parallel_gates = []
-		parallel_gates.append(gates_copy[0])
-		for i in range(1, len(gates_copy)):
-			flag = True
+	for items in gate_layer_list:
+		gates_copy = deepcopy(items)
+		while(len(gates_copy) != 0):
+			parallel_gates = []
+			parallel_gates.append(gates_copy[0])
+			for i in range(1, len(gates_copy)):
+				flag = True
+				for gate in parallel_gates:
+					if check_intersect_ver2(gate, gates_copy[i], coupling_graph, mapping, r_re):
+						continue
+					else:
+						flag = False
+						break
+				if flag:
+					parallel_gates.append(gates_copy[i])
+
 			for gate in parallel_gates:
-				if check_intersect_ver2(gate, gates_copy[i], coupling_graph, mapping, r_re):
-					continue
-				else:
-					flag = False
-					break
-			if flag:
-				parallel_gates.append(gates_copy[i])
-
-		for gate in parallel_gates:
-			gates_copy.remove(gate)
-		gates_list.append(parallel_gates)
-
+				gates_copy.remove(gate)
+			gates_list.append(parallel_gates)
+			#print("parl:",parallel_gates)
 	return gates_list
 
 def set_parameters(default):

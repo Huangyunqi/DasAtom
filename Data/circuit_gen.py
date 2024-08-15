@@ -38,12 +38,12 @@ def transform_cz_only(file_name, path):
 	return cz_only
 if __name__ == "__main__":
 
-	path = 'qft/'
+	path = 'quantum_volume/qv_50/'
 	#create_ghz_circuit(5, 21, path)
 
 	files = os.listdir(path)
 	for file_name in files:
 		cz_cir = transform_cz_only(file_name, path)
-		dump(cz_cir, 'qft_cz/cz_2q_'+file_name)
+		dump(cz_cir, 'quantum_volume_cz/cz_2q_'+file_name)
 
 

@@ -27,21 +27,22 @@ if __name__ == "__main__":
 	wb.save(path+'tetris_total.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path_type = 'Tetris_cz'
+	path_type = 'qft_cz'
 	path = "Data/{}/circuits/".format(path_type)
 	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
 	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
 	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
 	files = os.listdir(path)
+	If_save = True
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
-	total_ws.append(['file name','Qubits','CZ_gates', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
-	for num_file in range(len(files)):
-	#for num_file in [5]:
-		#file_name = 'cz_2q_twolocalrandom_indep_qiskit_{}.qasm'.format(num_file+5)
-		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
-		file_name = files[num_file]
+	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
+	#for num_file in range(25):
+	for num_file in [95]:
+		#file_name = 'cz_2q_graphstate_indep_qiskit_{}.qasm'.format(num_file+5)
+		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
+		#file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 		gate_2q_list = get_2q_gates_list(cz_circuit)
 	#print(gate_2q_list)
 	#obtain corresponding DAG
-		_, dag = gates_list_to_QC(gate_2q_list)
+		cirr, dag = gates_list_to_QC(gate_2q_list)
 		gate_num = len(gate_2q_list)
 	#obtain the qubits number
 		num_q = qubits_num(gate_2q_list)
@@ -197,10 +198,11 @@ if __name__ == "__main__":
 			#print(item)
 			ws.append(item)
 
-		total_ws.append([file_name, num_q, gate_num, Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings), total_time1-total_time])
+		total_ws.append([file_name, num_q, gate_num, cirr.depth(), Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings), total_time1-total_time])
 		save_file = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file)
-		wb.save(save_file)
+		if If_save:
+			wb.save(save_file)
 
 		data = {
 		# "runtime": float(time.time() - start_time),
@@ -227,7 +229,8 @@ if __name__ == "__main__":
 		log_para.append(str(key))
 		log_para.append(str(value))
 	total_ws.append(log_para)
-	total_wb.save(path_result+'total_tet_our_mini_dis_arch1.xlsx')
+	if If_save:
+		total_wb.save(path_result+'{}_100.xlsx'.format(path_type))
 		#if global_dict["full_code"]:
 		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
 		#		json.dump(program, f)
