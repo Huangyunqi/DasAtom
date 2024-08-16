@@ -10,7 +10,7 @@ from SA import find_map_SA
 
 if __name__ == "__main__":
 
-	'''path = "results/tetris/Wstate_cz/map_us/"
+	'''path = "results/tetris/graph/map_tetris/"
 	files = os.listdir(path)
 	wb = Workbook()
 	ws = wb.active
@@ -24,22 +24,22 @@ if __name__ == "__main__":
 		print(cycle_file)
 		Fidelity, swap_count, gate_cycle = compute_fidelity_tetris(cycle_file, file_name, path)
 		ws.append([file_name, Fidelity, swap_count, gate_cycle])
-	wb.save(path+'tetris_total.xlsx')'''
+	wb.save(path+'graph_total.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
 	path_type = 'qft_cz'
 	path = "Data/{}/circuits/".format(path_type)
-	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
-	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
-	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
+	path_embeddings = "Data/{}/Rbsq2Re2sq2/embeddings/".format(path_type)
+	path_partitions = "Data/{}/Rbsq2Re2sq2/partitions/".format(path_type)
+	path_result = "results/yq_test/{}/Rbsq2Re2sq2/".format(path_type)
 	files = os.listdir(path)
 	If_save = True
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
 	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
-	#for num_file in range(25):
-	for num_file in [95]:
+	for num_file in range(len(files)):
+	#for num_file in [95]:
 		#file_name = 'cz_2q_graphstate_indep_qiskit_{}.qasm'.format(num_file+5)
 		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
 		#file_name = files[num_file]
@@ -64,10 +64,10 @@ if __name__ == "__main__":
 		arch_size = math.ceil(math.sqrt(num_q))
 		#Rb = math.sqrt(2)
 		log.append(['arch_size', 'sqrt(num_q)', arch_size])
-		Rb = 2
-		log.append(['Rb', '2'])
-		r_re = 4 
-		log.append(['r_re', '4'])
+		Rb = math.sqrt(2)
+		log.append(['Rb', 'sqrt(2)'])
+		r_re = 2*Rb
+		log.append(['r_re', '2*sqrt(2)'])
 	#obtain the corresponding coupling_graph 
 		coupling_graph = generate_grid_with_Rb(arch_size,arch_size, Rb)
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
 		log_para.append(str(value))
 	total_ws.append(log_para)
 	if If_save:
-		total_wb.save(path_result+'{}_100.xlsx'.format(path_type))
+		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))
 		#if global_dict["full_code"]:
 		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
 		#		json.dump(program, f)
