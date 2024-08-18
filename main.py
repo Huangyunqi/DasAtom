@@ -27,23 +27,25 @@ if __name__ == "__main__":
 	wb.save(path+'graph_total.xlsx')'''
 	#qasm input
 	#path = "Data/qft/"
-	path_type = 'regular_graph_cz'
+	path_type = 'graph_cz'
 	path = "Data/{}/circuits/".format(path_type)
-	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
-	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
-	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
+	path_embeddings = "Data/{}/Rbsq2Re2sq2/embeddings/".format(path_type)
+	path_partitions = "Data/{}/Rbsq2Re2sq2/partitions/".format(path_type)
+	path_result = "results/yq_test/{}/Rbsq2Re2sq2/".format(path_type)
 	files = os.listdir(path)
-	save_file = True
+	save_file_sub = True
+	save_file_tot = True
 	from_read = False
+	write_txt = True
 	#file_name = 'qft_50.qasm'
 	total_wb = Workbook()
 	total_ws = total_wb.active
 	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
-	for num_file in range(len(files)):
-	#for num_file in [5]:
-		#file_name = 'cz_2q_dj_indep_qiskit_{}.qasm'.format(num_file+5)
+	for num_file in range(26):
+	#for num_file in [4]:
+		file_name = 'cz_2q_graphstate_indep_qiskit_{}.qasm'.format(num_file+5)
 		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
-		file_name = files[num_file]
+		#file_name = files[num_file]
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
@@ -63,9 +65,9 @@ if __name__ == "__main__":
 		print("Num of gates", gate_num)
 		log.append(['Num of gate', gate_num])
 		arch_size = math.ceil(math.sqrt(num_q))
-		#Rb = math.sqrt(2)
+		Rb = math.sqrt(2)
 		log.append(['arch_size', 'sqrt(num_q)', arch_size])
-		Rb = 2
+		#Rb = 2
 		log.append(['Rb', 'sqrt(2)'])
 		r_re = 2*Rb
 		log.append(['r_re', '2*sqrt(2)'])
@@ -80,7 +82,8 @@ if __name__ == "__main__":
 			partition_gates = read_data(path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		else:
 			partition_gates = parition_from_DAG(dag, coupling_graph)
-			write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')		
+			if write_txt:
+				write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')		
 			time_part1 = time.time()
 			print("partition time is, ",time_part1-time_part)
 			log.append(["partition time", time_part1-time_part])
@@ -99,13 +102,17 @@ if __name__ == "__main__":
 		if from_read:
 			embeddings = read_data(path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 		else:
-			embeddings = get_embeddings(partition_gates, coupling_graph, num_q)
-			write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
+			embeddings, extend_pos = get_embeddings(partition_gates, coupling_graph, num_q, arch_size, Rb)
+			if write_txt:
+				write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
 			time_embed1 = time.time()
 			print("partition number:", len(partition_gates))
 			log.append(["find embeddings time", time_embed1-time_embed])
+			if len(extend_pos) != 0:
+				log.append(["extend graph times", len(extend_pos)])
+				log.append(extend_pos)
+				arch_size += len(extend_pos)
 
-		
 		parallel_gates = []
 		time_paral = time.time()
 		for i in range(len(partition_gates)):
@@ -162,7 +169,7 @@ if __name__ == "__main__":
 		total_ws.append([file_name, num_q, gate_num, cirr.depth(), Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings), total_time1-total_time])
 		save_file_name = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
 		print(save_file_name)
-		if save_file:
+		if save_file_sub:
 			wb.save(save_file_name)
 
 	para = set_parameters(True)
@@ -171,8 +178,8 @@ if __name__ == "__main__":
 		log_para.append(str(key))
 		log_para.append(str(value))
 	total_ws.append(log_para)
-	if save_file:
-		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))
+	if save_file_tot:
+		total_wb.save(path_result+'{}_29.xlsx'.format(path_type))
 		'''window = False
 		window_size = 1000
 		routing_strategy = "maximalis"

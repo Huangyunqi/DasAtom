@@ -303,6 +303,10 @@ def generate_grid_with_Rb(n, m, Rb):
 
     return G
 
+def extend_graph(coupling_graph, arch_size, Rb):
+	coupling_graph = generate_grid_with_Rb(arch_size+1, arch_size+1, Rb)
+	return coupling_graph
+
 def get_embedding(gates_list, previous_embedding, coupling_graph):
 	tmp_graph = nx.Graph()
 	tmp_graph.add_edges_from(gates_list)
@@ -672,15 +676,19 @@ def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
 	move_fidelity = math.exp(-t_move/para['T_eff'])
 	return t_idle, Fidelity, move_fidelity
 
-def get_embeddings(partition_gates, coupling_graph, num_q, initial_mapping=None):
+def get_embeddings(partition_gates, coupling_graph, num_q, arch_size, Rb, initial_mapping=None):
 	embeddings = []
 	begin_index = 0
+	extend_position = []
 	if initial_mapping:
 		embeddings.append(initial_mapping)
 		begin_index = 1
 	for i in range(begin_index, len(partition_gates)):
 		tmp_graph = nx.Graph()
 		tmp_graph.add_edges_from(partition_gates[i])
+		if not rx_is_subgraph_iso(coupling_graph, tmp_graph):
+			coupling_graph = extend_graph(coupling_graph, arch_size, Rb)
+			extend_position.append(i)
 		next_embedding = get_rx_one_mapping(tmp_graph, coupling_graph)
 		next_embedding = map2list(next_embedding,num_q)
 		embeddings.append(next_embedding)
@@ -690,7 +698,7 @@ def get_embeddings(partition_gates, coupling_graph, num_q, initial_mapping=None)
 		if indices:
 			embeddings[i] = complete_mapping(i, embeddings, indices, coupling_graph)
 
-	return embeddings
+	return embeddings, extend_position
 
 def qasm_to_map(filename):
 
