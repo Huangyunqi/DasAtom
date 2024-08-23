@@ -10,7 +10,11 @@ from SA import find_map_SA
 
 if __name__ == "__main__":
 
+<<<<<<< Updated upstream
 	path = "results/tetris/regular_graph_cz/map_tetris/"
+=======
+	'''path = "results/tetris/quantum_volume_cz/map_tetris/"
+>>>>>>> Stashed changes
 	files = os.listdir(path)
 	wb = Workbook()
 	ws = wb.active
@@ -24,7 +28,11 @@ if __name__ == "__main__":
 		print(cycle_file)
 		Fidelity, swap_count, gate_cycle = compute_fidelity_tetris(cycle_file, file_name, path)
 		ws.append([file_name, Fidelity, swap_count, gate_cycle])
+<<<<<<< Updated upstream
 	wb.save(path+'regular_graph_cz_total.xlsx')
+=======
+	wb.save(path+'quantum_volume_total.xlsx')'''
+>>>>>>> Stashed changes
 	#qasm input
 	#path = "Data/qft/"
 	'''path_type = 'qft_cz'
@@ -179,8 +187,137 @@ if __name__ == "__main__":
 		log_para.append(str(value))
 	total_ws.append(log_para)
 	if save_file_tot:
+<<<<<<< Updated upstream
 		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))'''
 	
+=======
+		total_wb.save(path_result+'{}_29.xlsx'.format(path_type))
+	 	'''window = False
+		window_size = 1000
+		routing_strategy = "maximalis"
+		layers = []
+		initial_map = map_to_layer(embeddings[0])
+		initial_map["gates"] = gate_in_layer(partition_gates[0])
+		layers.append(initial_map)
+		all_movements = []
+		total_paralled = []
+		for num in range(len(embeddings) - 1):
+			log.append([str(embeddings[num])])
+			for gates in parallel_gates[num]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+				total_paralled.append(gates)
+
+			current_map = embeddings[num]
+			next_map = embeddings[num + 1]
+			last_layer = map_to_layer(current_map)
+			next_layer = map_to_layer(next_map)
+		
+			movements = get_movement(current_map,next_map)
+		# Sort movements by distance in descending order
+			sorted_keys = sorted(movements.keys(), key=lambda k: math.dist((movements[k][0], movements[k][1]), (movements[k][2], movements[k][3])), reverse=False)
+		# print(f'sorted_keys:{sorted_keys}')
+		# Check for violations
+			violations = []
+			for i in range(len(sorted_keys)):
+				for j in range(i + 1, len(sorted_keys)):
+					if not compatible_2D(movements[sorted_keys[i]], movements[sorted_keys[j]]):
+						violations.append((sorted_keys[i], sorted_keys[j]))
+
+		# print(f'Violations: {violations}')
+		
+		# Resolve violations
+			while violations:
+				new_layer,movements,violations, movement_result = solve_violations(movements,violations,sorted_keys,routing_strategy,num_q,last_layer)
+				all_movements.append(movement_result)
+				log.append([str(movement_result[it]) for it in range(len(movement_result))])
+				layers.append(new_layer)
+				for i in range(num_q):
+					if new_layer["qubits"][i]["a"] == 1:
+						last_layer["qubits"][i] = next_layer["qubits"][i]
+				
+			if movements:
+				for qubit in movements:
+					move = movements[qubit]
+					all_movements.append([[qubit, [move[0],move[1]],[move[2],move[3]]]])
+					log.append([str([qubit, [move[0],move[1]], [move[2],move[3]]])])
+					for qubit_ in last_layer["qubits"]:
+						if qubit_["id"] == qubit:
+							qubit_["a"] = 1
+				layers.append(last_layer)
+			layers[-1]["gates"] = gate_in_layer(partition_gates[num+1])
+		# layers.append(next_layer)
+		if len(partition_gates) > 1:
+			log.append([str(embeddings[num+1])])
+			for gates in parallel_gates[num+1]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+				total_paralled.append(gates)
+		else:
+			log.append([str(embeddings[0])])
+			for gates in parallel_gates[0]:
+				log.append([str(gates[it]) for it in range(len(gates))])
+				total_paralled.append(gates)
+		t_idle, Fidelity, move_fidelity = compute_fidelity(total_paralled, all_movements, num_q, gate_num)
+		print("Fidelity is:", Fidelity)
+		log.append(["Fidelity:", Fidelity])
+		log.append(["t_idle:", t_idle])
+		log.append(["move_fidelity", move_fidelity])
+		log.append(["Movement times", len(all_movements)])
+		log.append(["parallel times", len(total_paralled)])
+		log.append(["partitions", len(embeddings)])
+		total_time1 = time.time()
+		log.append(["total time:", total_time1-total_time])
+		para = set_parameters(True)
+		log_para = []
+		for key, value in para.items():
+			log_para.append(str(key))
+			log_para.append(str(value))
+		log.append(log_para)
+		for item in log:
+			#print(item)
+			ws.append(item)
+
+		total_ws.append([file_name, num_q, gate_num, cirr.depth(), Fidelity, move_fidelity, len(all_movements), len(total_paralled), len(embeddings), total_time1-total_time])
+		save_file = path_result+'{}_rb{}_archsize{}_mini_dis.xlsx'.format(file_name, Rb, arch_size)
+		print(save_file)
+		if If_save:
+			wb.save(save_file)
+
+		data = {
+		# "runtime": float(time.time() - start_time),
+		"no_transfer": False,
+		"layers": layers,
+		"n_q": num_q,
+		"g_q": gate_2q_list,
+		}
+ 
+		global_dict['full_code'] = True
+
+		data['n_x'] = arch_size
+		data['n_y'] = arch_size
+		data['n_r'] = arch_size
+		data['n_c'] = arch_size
+	# print("#layers: {}".format(len(data["layers"])))
+	# t_s = time.time()
+		codegen = CodeGen(data)
+		program = codegen.builder(no_transfer=False)
+		program = program.emit_full()
+	para = set_parameters(True)
+	log_para = []
+	for key, value in para.items():
+		log_para.append(str(key))
+		log_para.append(str(value))
+	total_ws.append(log_para)
+	if If_save:
+		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))
+		#if global_dict["full_code"]:
+		#	with open(f"results/test_{num_q}_{0}_code_full.json", 'w') as f:
+		#		json.dump(program, f)
+		#		for instruction in program:
+		#			instruction["state"] = {}
+    # optional
+    # run following command in terminal:
+    # python Enola/animation.py f"Data/test_{num_q}_{0}_code_full.json" --dir "./Data/"'''
+>>>>>>> Stashed changes
 
 
 
