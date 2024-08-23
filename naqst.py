@@ -779,7 +779,7 @@ def read_data(path, file_name):
 # 输出读取的数据
 	return data
 
-def get_circuit_from_json(num_qubits: int) -> QuantumCircuit:
+def get_circuit_from_json(num_qubits: int):
     """
     Load a quantum circuit from a JSON file based on the number of qubits.
 
@@ -797,15 +797,18 @@ def get_circuit_from_json(num_qubits: int) -> QuantumCircuit:
     with open(json_file_path, "r") as file:
         data = json.load(file)
     circuit_data = data.get(str(num_qubits))
-
+    from qiskit.qasm2.export import dump
     # Check if the circuit configuration exists
     if circuit_data:
-        quantum_circuit = QuantumCircuit(num_qubits)
         # Add gates to the circuit based on the data
-        for layer in circuit_data:
-            for gate in layer:
-                quantum_circuit.cz(gate[0], gate[1])
-        return quantum_circuit
+        quantum_circuit = QuantumCircuit(num_qubits)
+        index = 1
+        for circuits in circuit_data: 
+        	for gate in circuits:
+        		quantum_circuit.cz(gate[0], gate[1])
+        	dump(quantum_circuit, 'Data/3_regular_cz/circuits/3_regular_{}_{}.qasm'.format(num_qubits, index))
+        	index += 1
+        #return quantum_circuit
     else:
         # Raise an error if no configuration is found
         raise ValueError(f"No circuit configuration for {num_qubits} qubits in graphs.json")
