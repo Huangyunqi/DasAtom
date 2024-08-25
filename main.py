@@ -10,7 +10,7 @@ from SA import find_map_SA
 
 if __name__ == "__main__":
 
-	'''path = "results/tetris/quantum_volume_cz/map_tetris/"
+	'''path = "results/tetris/3_regular_graph/map_tetris/"
 	files = os.listdir(path)
 	wb = Workbook()
 	ws = wb.active
@@ -28,12 +28,11 @@ if __name__ == "__main__":
 	wb.save(path+'quantum_volume_total.xlsx')'''
 
 	#qasm input
-	#path = "Data/qft_cz/"
 	path_type = 'qft_cz'
 	path = "Data/{}/circuits/".format(path_type)
-	path_embeddings = "Data/{}/Rb2Re4/ag3/embeddings/".format(path_type)
-	path_partitions = "Data/{}/Rb2Re4/ag3/partitions/".format(path_type)
-	path_result = "results/yq_test/{}/Rb2Re4/ag3/".format(path_type)
+	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
+	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
+	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
 	files = os.listdir(path)
 	save_file_sub = True
 	save_file_tot = True
@@ -44,10 +43,11 @@ if __name__ == "__main__":
 	total_ws = total_wb.active
 	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
 	for num_file in range(len(files)):
-	#for num_file in [4]:
+	#for num_file in [0]:
 		#file_name = 'cz_2q_dj_indep_qiskit_{}.qasm'.format(num_file+5)
 		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
 		#file_name = files[num_file]
+		#file_name = 'qft_cz_all.qasm'
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 		num_q = qubits_num(gate_2q_list)
 		print("Num of gates", gate_num)
 		log.append(['Num of gate', gate_num])
-		arch_size = 3*math.ceil(math.sqrt(num_q))
+		arch_size = math.ceil(math.sqrt(num_q))
 		#Rb = math.sqrt(2)
 		log.append(['arch_size', 'sqrt(num_q)', arch_size])
 		Rb = 2
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 		else:
 			partition_gates = parition_from_DAG(dag, coupling_graph)
 			if write_txt:
-				write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'.txt')		
+				write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'part.txt')		
 			time_part1 = time.time()
 			print("partition time is, ",time_part1-time_part)
 			log.append(["partition time", time_part1-time_part])
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 		else:
 			embeddings, extend_pos = get_embeddings(partition_gates, coupling_graph, num_q, arch_size, Rb)
 			if write_txt:
-				write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'.txt')
+				write_data(embeddings, path_embeddings, file_name.removesuffix(".qasm")+'emb.txt')
 			time_embed1 = time.time()
 			print("partition number:", len(partition_gates))
 			log.append(["find embeddings time", time_embed1-time_embed])
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 		log_para.append(str(value))
 	total_ws.append(log_para)
 	if save_file_tot:
-		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))
+		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))'''
 	
 
 	 	
