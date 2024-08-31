@@ -28,8 +28,8 @@ if __name__ == "__main__":
 	wb.save(path+'quantum_volume_total.xlsx')'''
 
 	#qasm input
-	path_type = 'qft_cz'
-	path = "Data/{}/circuits/".format(path_type)
+	path_type = '3_regular_cz'
+	path = "Data/{}/circuits/big/".format(path_type)
 	path_embeddings = "Data/{}/Rb2Re4/embeddings/".format(path_type)
 	path_partitions = "Data/{}/Rb2Re4/partitions/".format(path_type)
 	path_result = "results/yq_test/{}/Rb2Re4/".format(path_type)
@@ -42,12 +42,12 @@ if __name__ == "__main__":
 	total_wb = Workbook()
 	total_ws = total_wb.active
 	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
-	for num_file in range(len(files)):
-	#for num_file in [0]:
+	#for num_file in range(len(files)):
+	for num_file in [30,40,50,60,70,80,90,100]:
 		#file_name = 'cz_2q_dj_indep_qiskit_{}.qasm'.format(num_file+5)
-		file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
+		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
 		#file_name = files[num_file]
-		#file_name = 'qft_cz_all.qasm'
+		file_name = '3_regular_{}_1.qasm'.format(num_file)
 		print(file_name)
 		wb = Workbook()
 		ws = wb.active
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 		log_para.append(str(value))
 	total_ws.append(log_para)
 	if save_file_tot:
-		total_wb.save(path_result+'{}_total.xlsx'.format(path_type))'''
+		total_wb.save(path_result+'{}_big.xlsx'.format(path_type))
 	
 
 	 	

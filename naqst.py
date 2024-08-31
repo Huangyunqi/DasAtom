@@ -149,6 +149,7 @@ def parition_from_DAG(dag, coupling_graph):
 			subgraph = tmp_graph.subgraph(component)
 			if len(subgraph.edges()) == nx.diameter(subgraph): #path-tolopology, must sub_iso
 				continue
+			print(subgraph.edges())
 			if not rx_is_subgraph_iso(coupling_graph, subgraph):
 				isIso = False
 				break
@@ -801,10 +802,10 @@ def get_circuit_from_json(num_qubits: int):
     # Check if the circuit configuration exists
     if circuit_data:
         # Add gates to the circuit based on the data
-        quantum_circuit = QuantumCircuit(num_qubits)
         index = 1
         for circuits in circuit_data: 
         	for gate in circuits:
+        		quantum_circuit = QuantumCircuit(num_qubits)
         		quantum_circuit.cz(gate[0], gate[1])
         	dump(quantum_circuit, 'Data/3_regular_cz/circuits/3_regular_{}_{}.qasm'.format(num_qubits, index))
         	index += 1
