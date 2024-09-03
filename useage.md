@@ -49,11 +49,11 @@ The following are the main packages used in this project:
 
 - **rustworkx**:
 - **networkx** :
-- **qiskit** :
+- **qiskit** : Used for reading QASM 2 files, transpiling circuits to CZ and U3 gates, and subsequently removing the U3 gates.
 
 ## Additional Notes
 
-- Ensure that you have Python 3.6 or higher installed on your system.
+- Ensure that you have Python 3.9 or higher installed on your system.
 - If you encounter any issues during the installation, ensure that all required system dependencies are installed.
 
 ## Running the Project
