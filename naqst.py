@@ -20,15 +20,16 @@ def qubits_num(Circuit): #Circuit: gates list
 	return num
 
 def CreateCircuitFromQASM(file, path):
-	print(path+file)
-	QASM_file = open(path + file, 'r')
-	iter_f = iter(QASM_file)
-	QASM = ''
-	for line in iter_f: 
-		QASM = QASM + line
-	cir = QuantumCircuit.from_qasm_str(QASM)
-	QASM_file.close    
-	return cir
+    filePath = os.path.join(path,file)
+    print(filePath)
+    QASM_file = open(filePath, 'r')
+    iter_f = iter(QASM_file)
+    QASM = ''
+    for line in iter_f: 
+        QASM = QASM + line
+    cir = QuantumCircuit.from_qasm_str(QASM)
+    QASM_file.close
+    return cir
 
 def get_rx_all_mapping(graph_max, G):
 	sub_graph = rx.networkx_converter(graph_max)
