@@ -16,7 +16,7 @@ Below is a breakdown of the folders within this directory, along with the origin
   Contains benchmarks collected from the [Q-Tetris repository](https://github.com/s4plus/Q-Tetris).
 
 - **qiskit-bench/**
-  Contains benchmarks generated from the [Qiskit Benchmark repository](https://github.com/Qiskit-Community/qiskit-experiments). Includes `QFT` and `Quantum Volume` benchmarks. The original two-qubit gate `CX` has been transpiled to `CZ` using `qiskit`.
+  Contains benchmarks generated from the [Qiskit circuit library](https://docs.quantum.ibm.com/api/qiskit/circuit_library). Includes `QFT` and `Quantum Volume` benchmarks. The original two-qubit gate `CX` has been transpiled to `CZ` using `qiskit`.
 
 ## Acknowledgements
 
