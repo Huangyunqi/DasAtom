@@ -3,29 +3,13 @@ from openpyxl import Workbook
 import math
 import time
 from vfsexp import Vf
-from Enola.codegen import CodeGen, global_dict
 from Enola.route import QuantumRouter
 import json
+import argparse
+
 from SA import find_map_SA
 
 if __name__ == "__main__":
-
-	'''path = "results/tetris/3_regular_graph/map_tetris/"
-	files = os.listdir(path)
-	wb = Workbook()
-	ws = wb.active
-	ws.append(['circuit name', 'Fidelity', 'inserted SWAP', 'gate_cycle'])
-	for num_file in range(len(files)):
-		file_name = files[num_file]
-		if not file_name.endswith('.qasm'):
-			continue
-		print(file_name)
-		cycle_file = file_name+'.txt'
-		print(cycle_file)
-		Fidelity, swap_count, gate_cycle = compute_fidelity_tetris(cycle_file, file_name, path)
-		ws.append([file_name, Fidelity, swap_count, gate_cycle])
-
-	wb.save(path+'quantum_volume_total.xlsx')'''
 
 	#qasm input
 	path_type = '3_regular_cz'
@@ -44,9 +28,7 @@ if __name__ == "__main__":
 	total_ws.append(['file name','Qubits','CZ_gates', 'depth', 'fidelity', 'movement_fidelity', 'movement times', 'gate cycles', 'partitions', 'Times'])
 	#for num_file in range(len(files)):
 	for num_file in [30,40,50,60,70,80,90,100]:
-		#file_name = 'cz_2q_dj_indep_qiskit_{}.qasm'.format(num_file+5)
-		#file_name = 'cz_2q_qft_{}.qasm'.format(num_file+5)
-		#file_name = files[num_file]
+
 		file_name = '3_regular_{}_1.qasm'.format(num_file)
 		print(file_name)
 		wb = Workbook()
@@ -182,6 +164,3 @@ if __name__ == "__main__":
 	total_ws.append(log_para)
 	if save_file_tot:
 		total_wb.save(path_result+'{}_big.xlsx'.format(path_type))
-	
-
-	 	
