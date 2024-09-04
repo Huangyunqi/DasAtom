@@ -10,7 +10,7 @@ import json
 from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
 
-from vfsexp import Vf
+# from vfsexp import Vf
 import copy
 from copy import deepcopy
 
@@ -308,12 +308,12 @@ def extend_graph(coupling_graph, arch_size, Rb):
 	coupling_graph = generate_grid_with_Rb(arch_size+1, arch_size+1, Rb)
 	return coupling_graph
 
-def get_embedding(gates_list, previous_embedding, coupling_graph):
-	tmp_graph = nx.Graph()
-	tmp_graph.add_edges_from(gates_list)
-	vf2 = Vf(tmp_graph, coupling_graph, {}, 50, preMap=previous_embedding, upperbound=1000)
-	max_mapping = vf2.dfsMatchBest({}) #Times
-	return max_mapping
+# def get_embedding(gates_list, previous_embedding, coupling_graph):
+# 	tmp_graph = nx.Graph()
+# 	tmp_graph.add_edges_from(gates_list)
+# 	vf2 = Vf(tmp_graph, coupling_graph, {}, 50, preMap=previous_embedding, upperbound=1000)
+# 	max_mapping = vf2.dfsMatchBest({}) #Times
+# 	return max_mapping
 
 def map2list(mapping, num_q):
 	map_list = [-1] * num_q
