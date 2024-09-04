@@ -1,13 +1,25 @@
-Benchmarks/ <- mqt
-qft, qv <- qiskit.
-## Acknowledgement
+# Benchmark Folder
 
-This folder contains benchmarks used in this project, sourced from various repositories. Below is a list of the benchmarks along with their respective sources:
+This folder contains a collection of benchmarks used in This project. These benchmarks are sourced from various trusted repositories and have been adapted for use in our project.
 
-- **MQT bench**: [Repository Name 1](Repository URL 1)
-- **Benchmark 2**: [Repository Name 2](Repository URL 2)
-- **Benchmark 3**: [Repository Name 3](Repository URL 3)
+## Folder Sources
 
-We would like to acknowledge and thank the original authors for providing these valuable resources. These benchmarks have been incorporated into this project to support testing, validation, and comparative analysis. They are used with respect to the original creators' intent and are not central to the core functionality of this project.
+Below is a breakdown of the folders within this directory, along with the original sources of the benchmarks:
+
+- **mqt-bench/**
+  Contains benchmarks downloaded from the [MQT Benchmark Library](https://www.cda.cit.tum.de/mqtbench/#:~:text=The%20MQT%20Benchmark%20Library%20(MQT%20Bench)%20provides%20a%20single%20benchmark). Includes benchmarks `DJ`, `GHZ`, `local random`, and `Wstate`. The original two-qubit gate `CX` has been transpiled to `CZ` using `qiskit`.
+
+- **3-regular-graph/**
+  Contains benchmarks generated from the [Enola repository](https://github.com/UCLA-VAST/Enola). These benchmarks involve 3-regular graphs.
+
+- **Q_Tetris/**
+  Contains benchmarks collected from the [Q-Tetris repository](https://github.com/s4plus/Q-Tetris).
+
+- **qiskit-bench/**
+  Contains benchmarks generated from the [Qiskit Benchmark repository](https://github.com/Qiskit-Community/qiskit-experiments). Includes `QFT` and `Quantum Volume` benchmarks. The original two-qubit gate `CX` has been transpiled to `CZ` using `qiskit`.
+
+## Acknowledgements
+
+We would like to acknowledge and thank the original authors for providing these valuable resources.
 
 If you are the original author and have any concerns or requests regarding the use of your benchmarks, please feel free to contact us.
