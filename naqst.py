@@ -21,7 +21,7 @@ def qubits_num(Circuit): #Circuit: gates list
 
 def CreateCircuitFromQASM(file, path):
     filePath = os.path.join(path,file)
-    print(filePath)
+    # print(filePath)
     QASM_file = open(filePath, 'r')
     iter_f = iter(QASM_file)
     QASM = ''
@@ -590,7 +590,7 @@ def compute_fidelity_tetris(cycle_file, qasm_file, path):
 	t_idle = num_q * t_total - gate_num * para['T_cz']
 
 	Fidelity =math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
-	print(Fidelity)
+	# print(Fidelity)
 	return Fidelity, swap_count, gate_cycle
 
 def write_data(data, path, file_name): 
