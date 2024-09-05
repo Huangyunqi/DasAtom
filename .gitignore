@@ -1,4 +1,39 @@
-.venv
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+__pycache__/
+*.so
+
+# Virtual environment
+.venv/
+
+# VSCode settings and history
 .vscode/
 .history/
-*.pyc
+
+# Logs
+*.log
+
+# Operating system generated files
+.DS_Store
+Thumbs.db
+
+# Results folder (if you want to exclude all contents)
+res/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# MyPy cache
+.mypy_cache/
+
+# Environments
+.env
