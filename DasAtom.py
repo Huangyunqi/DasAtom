@@ -4,7 +4,7 @@ import math
 from openpyxl import Workbook
 import warnings
 from Enola.route import QuantumRouter
-from naqst import *
+from DasAtom_fun import *
 import argparse
 
 class DasAtom:

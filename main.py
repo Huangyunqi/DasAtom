@@ -1,4 +1,4 @@
-from naqst import *
+from DasAtom_fun import *
 from openpyxl import Workbook
 import math
 import time
