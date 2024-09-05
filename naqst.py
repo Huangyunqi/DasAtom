@@ -593,14 +593,14 @@ def compute_fidelity_tetris(cycle_file, qasm_file, path):
 	# print(Fidelity)
 	return Fidelity, swap_count, gate_cycle
 
-def write_data(data, path, file_name): 
-	with open(path+file_name, 'w') as file:
+def write_data(data, path, file_name):
+	with open(os.path.join(path,file_name), 'w') as file:
 		for sublist in data:
         # 将每个子列表转换为 JSON 格式的字符串，并写入文件
 			file.write(json.dumps(sublist) + '\n')
 
 def read_data(path, file_name):
-	with open(path+file_name, 'r') as file:
+	with open(os.path.join(path,file_name), 'r') as file:
     # 逐行读取文件
 		data = [json.loads(line) for line in file]
 
