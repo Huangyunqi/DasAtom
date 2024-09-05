@@ -74,7 +74,7 @@ class DasAtom:
     def _process_file(self, file_name):
         wb = Workbook()
         ws = wb.active
-        self.log = []
+        self.temp_log = []
         total_time = time.time()
 
         cz_circuit = CreateCircuitFromQASM(file_name,self.cir_folder)
@@ -92,8 +92,8 @@ class DasAtom:
 
         t_idle, Fidelity, move_fidelity = self._compute_fidelity(parallel_gates, all_movements, num_q, gate_num)
 
-        self.log.append(["total time:", time.time() - total_time])
-        for item in self.log:
+        self.temp_log.append(["total time:", time.time() - total_time])
+        for item in self.temp_log:
             ws.append(item)
 
         save_file_name = os.path.join(self.path_result,f'{file_name}_rb{self.Rb}_archSize{arch_size}_mini_dis.xlsx')
@@ -110,10 +110,10 @@ class DasAtom:
         num_q = qubits_num(gate_2q_list)
         arch_size = math.ceil(math.sqrt(num_q))
 
-        self.log.append(['Num of gate', gate_num])
-        self.log.append(['arch_size', 'sqrt(num_q)', arch_size])
-        self.log.append(['Rb', self.Rb])
-        self.log.append(['r_re', self.Re])
+        self.temp_log.append(['Num of gate', gate_num])
+        self.temp_log.append(['arch_size', 'sqrt(num_q)', arch_size])
+        self.temp_log.append(['Rb', self.Rb])
+        self.temp_log.append(['r_re', self.Re])
 
         return num_q, gate_num, arch_size
 
@@ -126,9 +126,9 @@ class DasAtom:
         else:
             time_part = time.time()
             partition_gates = partition_from_DAG(dag, coupling_graph)
+            self.temp_log.append(["partition time", time.time() - time_part])
             if self.save_embeddings:
                 write_data(partition_gates, self.path_partitions, file_name.removesuffix(".qasm") + 'part.txt')
-            self.log.append(["partition time", time.time() - time_part])
             return partition_gates
 
     def _get_embeddings(self, file_name, partition_gates, coupling_graph, num_q, arch_size):
@@ -137,12 +137,12 @@ class DasAtom:
         else:
             time_embed = time.time()
             embeddings, extend_pos = get_embeddings(partition_gates, coupling_graph, num_q, arch_size, self.Rb)
+            self.temp_log.append(["find embeddings time", time.time() - time_embed])
             if self.save_embeddings:
                 write_data(embeddings, self.path_embeddings, file_name.removesuffix(".qasm") + 'emb.txt')
-            self.log.append(["find embeddings time", time.time() - time_embed])
             if len(extend_pos) != 0:
-                self.log.append(["extend graph times", len(extend_pos)])
-                self.log.append(extend_pos)
+                self.temp_log.append(["extend graph times", len(extend_pos)])
+                self.temp_log.append(extend_pos)
                 arch_size += len(extend_pos)
 
         return embeddings, arch_size
@@ -160,20 +160,20 @@ class DasAtom:
 
         for num in range(len(embeddings) - 1):
             for gates in parallel_gates[num]:
-                self.log.append([str(gates[it]) for it in range(len(gates))])
+                self.temp_log.append([str(gates[it]) for it in range(len(gates))])
             for para_moves in route.movement_list[num]:
-                self.log.append([str(para_moves[it]) for it in range(len(para_moves))])
+                self.temp_log.append([str(para_moves[it]) for it in range(len(para_moves))])
                 all_movements.append(para_moves)
 
         return parallel_gates, all_movements
 
     def _compute_fidelity(self, parallel_gates, all_movements, num_q, gate_num):
         t_idle, Fidelity, move_fidelity = compute_fidelity(parallel_gates, all_movements, num_q, gate_num)
-        self.log.append(["Fidelity:", Fidelity])
-        self.log.append(["t_idle:", t_idle])
-        self.log.append(["move_fidelity", move_fidelity])
-        self.log.append(["Movement times", len(all_movements)])
-        self.log.append(["parallel times", len(parallel_gates)])
+        self.temp_log.append(["Fidelity:", Fidelity])
+        self.temp_log.append(["t_idle:", t_idle])
+        self.temp_log.append(["move_fidelity", move_fidelity])
+        self.temp_log.append(["Movement times", len(all_movements)])
+        self.temp_log.append(["parallel times", len(parallel_gates)])
 
         return t_idle, Fidelity, move_fidelity
 
@@ -186,8 +186,14 @@ if __name__ == "__main__":
     parser.add_argument("--radius_interaction", type=int, default=2, help="Radius of interaction (default: 2).")
     parser.add_argument("--save_folder", type=str, help="Folder to save results.")
     parser.add_argument("--embeddings_from_read", action="store_true", help="Whether to read embeddings from file.")
+
+    parser.add_argument("--save_embeddings", action="store_true", default=True, help="Save embeddings (default: True).")
     parser.add_argument("--no_save_embeddings", action="store_false", dest="save_embeddings", help="Do not save embeddings.")
+
+    parser.add_argument("--save_cir_res", action="store_true", default=True, help="Save circuit results (default: True).")
     parser.add_argument("--no_save_cir_res", action="store_false", dest="save_cir_res", help="Do not save circuit results.")
+
+    parser.add_argument("--save_bench_res", action="store_true", default=True, help="Save benchmark results (default: True).")
     parser.add_argument("--no_save_bench_res", action="store_false", dest="save_bench_res", help="Do not save benchmark results.")
 
     args = parser.parse_args()
