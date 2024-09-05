@@ -1,28 +1,14 @@
-# Define variables
-VENV_NAME = .venv
-REQUIREMENTS = requirements.txt
-EXAMPLE_SCRIPT = examples/example_script.py
-PYTHON = $(VENV_NAME)/bin/python
-PIP = $(VENV_NAME)/bin/pip
+# Makefile
 
-# Default target
-all: run
+.PHONY: all qft tetris
 
-# Create and set up the virtual environment
-$(VENV_NAME)/bin/activate: $(REQUIREMENTS)
-	@echo "Creating virtual environment..."
-	python -m venv $(VENV_NAME)
-	@echo "Activating virtual environment and installing dependencies..."
-	$(PIP) install --upgrade pip
-	$(PIP) install -r $(REQUIREMENTS)
+# Activate the virtual environment and run the Python scripts
+VENV_ACTIVATE = . .venv/bin/activate
 
-# Run the example script
-run: $(VENV_NAME)/bin/activate
-	@echo "Running example script..."
-	$(PYTHON) $(EXAMPLE_SCRIPT)
+all: qft tetris
 
-# Ensure dependencies are installed
-check_dependencies: $(VENV_NAME)/bin/activate
-	@$(PIP) install -r $(REQUIREMENTS)
+qft:
+	$(VENV_ACTIVATE) && nohup python -u DasAtom.py qft Data/qiskit-bench/qft/qft_small > qft.log 2>&1 &
 
-
+tetris:
+	$(VENV_ACTIVATE) && nohup python -u DasAtom.py tetris Data/Q_Tetris > test.log 2>&1 &
