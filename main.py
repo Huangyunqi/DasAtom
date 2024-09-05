@@ -65,7 +65,7 @@ if __name__ == "__main__":
 		if from_read:
 			partition_gates = read_data(path_partitions, file_name.removesuffix(".qasm")+'.txt')
 		else:
-			partition_gates = parition_from_DAG(dag, coupling_graph)
+			partition_gates = partition_from_DAG(dag, coupling_graph)
 			if write_txt:
 				write_data(partition_gates, path_partitions, file_name.removesuffix(".qasm")+'part.txt')		
 			time_part1 = time.time()

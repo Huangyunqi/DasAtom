@@ -133,7 +133,7 @@ def get_layer_gates(dag):
         gate_layer_list.append(gate_layer)
     return gate_layer_list
 
-def parition_from_DAG(dag, coupling_graph):
+def partition_from_DAG(dag, coupling_graph):
 	gate_layer_list = get_layer_gates(dag)
 	num_of_gate = 0
 	last_index = 0

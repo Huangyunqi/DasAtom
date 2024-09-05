@@ -79,7 +79,7 @@ class DasAtom:
 
         cz_circuit = CreateCircuitFromQASM(file_name,self.cir_folder)
         gate_2q_list = get_2q_gates_list(cz_circuit)
-        cirr, dag = gates_list_to_QC(gate_2q_list)
+        cir, dag = gates_list_to_QC(gate_2q_list)
 
         num_q, gate_num, arch_size= self._calculate_architecture(gate_2q_list)
 
@@ -96,12 +96,12 @@ class DasAtom:
         for item in self.log:
             ws.append(item)
 
-        save_file_name = os.path.join(self.path_result,f'{file_name}_rb{self.Rb}_archsize{arch_size}_mini_dis.xlsx')
+        save_file_name = os.path.join(self.path_result,f'{file_name}_rb{self.Rb}_archSize{arch_size}_mini_dis.xlsx')
         if self.save_cir_res:
             wb.save(save_file_name)
 
 
-        self.total_ws.append([file_name, num_q, gate_num, cirr.depth(), Fidelity, move_fidelity, len(all_movements), len(parallel_gates), len(embeddings), total_time])
+        self.total_ws.append([file_name, num_q, gate_num, cir.depth(), Fidelity, move_fidelity, len(all_movements), len(parallel_gates), len(embeddings), total_time])
 
         return
 
@@ -125,7 +125,7 @@ class DasAtom:
             return read_data(self.path_partitions, file_name.removesuffix(".qasm") + '.txt')
         else:
             time_part = time.time()
-            partition_gates = parition_from_DAG(dag, coupling_graph)
+            partition_gates = partition_from_DAG(dag, coupling_graph)
             if self.save_embeddings:
                 write_data(partition_gates, self.path_partitions, file_name.removesuffix(".qasm") + 'part.txt')
             self.log.append(["partition time", time.time() - time_part])
@@ -161,9 +161,9 @@ class DasAtom:
         for num in range(len(embeddings) - 1):
             for gates in parallel_gates[num]:
                 self.log.append([str(gates[it]) for it in range(len(gates))])
-            for paral_moves in route.movement_list[num]:
-                self.log.append([str(paral_moves[it]) for it in range(len(paral_moves))])
-                all_movements.append(paral_moves)
+            for para_moves in route.movement_list[num]:
+                self.log.append([str(para_moves[it]) for it in range(len(para_moves))])
+                all_movements.append(para_moves)
 
         return parallel_gates, all_movements
 
