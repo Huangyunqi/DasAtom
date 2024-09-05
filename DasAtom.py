@@ -11,7 +11,7 @@ class DasAtom:
     def __init__(self, bench_name: str, circuit_folder: str,
                 radius_interaction = 2,
                 save_folder = None,
-                embeddings_from_read=False, save_embeddings=True, save_cir_res=True, save_bench_res=True):
+                embeddings_from_read=False, save_partition_embedding=True, save_cir_res=True, save_bench_res=True):
 
         self.bench_name = bench_name
         self.Rb = radius_interaction
@@ -23,16 +23,32 @@ class DasAtom:
         if not save_folder:
             save_folder = f"res/{self.bench_name}"
         if os.path.exists(save_folder):
-            warnings.warn(f"The results for '{self.bench_name}' may be overwritten. \
-                To avoid this, consider using a different result folder before 'process_files' with the function 'modify_result_folder'.")
+            warnings.warn(f"The results for '{self.bench_name}' may be overwritten. To avoid this, consider using a different result folder before 'process_files' with the function 'modify_result_folder'.")
         self.res_folder = save_folder
         os.makedirs(self.res_folder,exist_ok=True)
 
-        self.files = [f for f in os.listdir(self.cir_folder) if f.endswith('.qasm')]
+        files = [f for f in os.listdir(self.cir_folder) if f.endswith('.qasm')]
+        self.files = sorted(files, key=self.__class__._extract_number)
         self.embeddings_from_read = embeddings_from_read
-        self.save_embeddings = save_embeddings
+        self.save_partition_embedding = save_partition_embedding
         self.save_cir_res = save_cir_res
         self.save_bench_res = save_bench_res
+
+    @staticmethod
+    def _extract_number(filename):
+        try:
+            if filename.endswith('.qasm'):
+                filename = filename.replace('.qasm', '')
+            parts = filename.split("_")[::-1]
+            for part in parts:
+                try:
+                    return int(part)
+                except ValueError:
+                    continue
+
+            return float('inf')
+        except Exception:
+            return float('inf')
 
 
     def modify_result_folder(self,save_folder:str):
@@ -127,7 +143,7 @@ class DasAtom:
             time_part = time.time()
             partition_gates = partition_from_DAG(dag, coupling_graph)
             self.temp_log.append(["partition time", time.time() - time_part])
-            if self.save_embeddings:
+            if self.save_partition_embedding:
                 write_data(partition_gates, self.path_partitions, file_name.removesuffix(".qasm") + 'part.txt')
             return partition_gates
 
@@ -138,7 +154,7 @@ class DasAtom:
             time_embed = time.time()
             embeddings, extend_pos = get_embeddings(partition_gates, coupling_graph, num_q, arch_size, self.Rb)
             self.temp_log.append(["find embeddings time", time.time() - time_embed])
-            if self.save_embeddings:
+            if self.save_partition_embedding:
                 write_data(embeddings, self.path_embeddings, file_name.removesuffix(".qasm") + 'emb.txt')
             if len(extend_pos) != 0:
                 self.temp_log.append(["extend graph times", len(extend_pos)])
@@ -185,7 +201,7 @@ if __name__ == "__main__":
     parser.add_argument("circuit_folder", type=str, help="Path to the folder containing circuit data.")
     parser.add_argument("--radius_interaction", type=int, default=2, help="Radius of interaction (default: 2).")
     parser.add_argument("--save_folder", type=str, help="Folder to save results.")
-    parser.add_argument("--embeddings_from_read", action="store_true", help="Whether to read embeddings from file.")
+    parser.add_argument("--embeddings_from_read", action="store_true", default=False, help="Whether to read embeddings from file.")
 
     parser.add_argument("--save_embeddings", action="store_true", default=True, help="Save embeddings (default: True).")
     parser.add_argument("--no_save_embeddings", action="store_false", dest="save_embeddings", help="Do not save embeddings.")
@@ -204,7 +220,7 @@ if __name__ == "__main__":
         radius_interaction=args.radius_interaction,
         save_folder=args.save_folder,
         embeddings_from_read=args.embeddings_from_read,
-        save_embeddings=args.save_embeddings,
+        save_partition_embedding=args.save_embeddings,
         save_cir_res=args.save_cir_res,
         save_bench_res=args.save_bench_res
     )
