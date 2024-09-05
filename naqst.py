@@ -150,7 +150,7 @@ def partition_from_DAG(dag, coupling_graph):
 			subgraph = tmp_graph.subgraph(component)
 			if len(subgraph.edges()) == nx.diameter(subgraph): #path-tolopology, must sub_iso
 				continue
-			print(subgraph.edges())
+			# print(subgraph.edges())
 			if not rx_is_subgraph_iso(coupling_graph, subgraph):
 				isIso = False
 				break
