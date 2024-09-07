@@ -84,7 +84,7 @@ class DasAtom:
             log_para.append(str(value))
         self.total_ws.append(log_para)
         if self.save_bench_res:
-            self.total_wb.save(os.path.join(self.path_result,f'{self.bench_name}_big.xlsx'))
+            self.total_wb.save(os.path.join(self.path_result,f'{self.bench_name}_total.xlsx'))
 
 
     def _process_file(self, file_name):
@@ -123,7 +123,7 @@ class DasAtom:
 
     def _calculate_architecture(self, gate_2q_list):
         gate_num = len(gate_2q_list)
-        num_q = qubits_num(gate_2q_list)
+        num_q = get_qubits_num(gate_2q_list)
         arch_size = math.ceil(math.sqrt(num_q))
 
         self.temp_log.append(['Num of gate', gate_num])
