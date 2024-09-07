@@ -19,10 +19,16 @@ def CreateCircuitFromQASM(file, path):
     QASM_file = open(filePath, 'r')
     iter_f = iter(QASM_file)
     QASM = ''
-    for line in iter_f: 
+    for line in iter_f:
         QASM = QASM + line
     cir = QuantumCircuit.from_qasm_str(QASM)
     QASM_file.close
+
+    gates_in_circuit = {op[0].name for op in cir.data}
+    allowed_basis_gates = {'cz', 'h', 's', 't', 'rx', 'ry', 'rz'}
+    # Check if there are any disallowed gates by checking the difference between sets
+    if gates_in_circuit - allowed_basis_gates:
+        cir = transpile(cir, basis_gates=list(allowed_basis_gates))
     return cir
 
 
