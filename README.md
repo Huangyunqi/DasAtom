@@ -27,8 +27,7 @@
 
 ## Main Packages Project used
 
-- **rustworkx**
-- **networkx**
+- **rustworkx**: Use for check subgraph isomorphism and find embeddings.
 - **qiskit**: Handles QASM files and gate optimizations.
 
 ## Project Folder Structure
