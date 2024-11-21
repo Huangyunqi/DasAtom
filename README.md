@@ -1,7 +1,7 @@
 
 # Usage Guide
 ## About This Repository
-This repository accompanies the research paper [**"DasAtom: A Divide-and-Shuttle Atom Approach to Quantum Circuit Transformation"**](https://arxiv.org/abs/2409.03185), detailing the methods and results of our work.
+This repository accompanies the research paper [**"DasAtom: A Divide-and-Shuttle Atom Approach to Quantum Circuit Transformation"**](https://arxiv.org/abs/2409.03185), detailing the methods of our work.
 
 ## Setup
 
