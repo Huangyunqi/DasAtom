@@ -17,8 +17,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Results folder (if you want to exclude all contents)
-res/
+# Results files (if you want to exclude all contents)
+*.txt
+*.xlsx
+*.json
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
