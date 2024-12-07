@@ -308,7 +308,7 @@ def get_parallel_gates(gates, coupling_graph, mapping, r_re):
             #print("parl:",parallel_gates)
     return gates_list
 
-def set_parameters(default):
+'''def set_parameters(default):
     para = {}
     if default:
         para['T_cz'] = 0.2  #us
@@ -319,9 +319,22 @@ def set_parameters(default):
         para['Move_speed'] = 0.55 #um/us
         para['F_cz'] = 0.995 
 
+    return para'''
+
+def set_parameters(T_cz = 0.2, T_eff = 1.5e6, T_trans=20, AOD_width=3,AOD_height=3,Move_speed=0.55,F_cz=0.995, F_trans = 1):
+    para = {}
+    para['T_cz'] = T_cz  #us
+    para['T_eff'] = T_eff #us
+    para['T_trans'] = T_trans # us
+    para['AOD_width'] = AOD_width #um
+    para['AOD_height'] = AOD_height #um
+    para['Move_speed'] = Move_speed #um/us
+    para['F_cz'] = F_cz
+    para['F_trans'] = F_trans
+
     return para
 
-def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
+'''def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
     para = set_parameters(True)
     t_total = 0
     t_total += (len(parallel_gates) * para['T_cz']) # cz execution time, parallel
@@ -343,7 +356,38 @@ def compute_fidelity(parallel_gates, all_movements, num_q, gate_num):
     t_idle = num_q * t_total - gate_num * para['T_cz']
     Fidelity = math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num)
     move_fidelity = math.exp(-t_move/para['T_eff'])
-    return t_idle, Fidelity, move_fidelity
+    return t_idle, Fidelity, move_fidelity'''
+
+def compute_fidelity(parallel_gates, all_movements, num_q, gate_num, para=None):
+    if para is None:
+        para = set_parameters()
+    t_total = 0
+    t_total += (len(parallel_gates) * para['T_cz']) # cz execution time, parallel
+    t_move = 0
+    num_trans = 0
+    num_move = 0
+    all_move_dis = 0
+    for move in all_movements:
+        t_total += (4 * para['T_trans']) # pick/drop/pick/drop
+        t_move += (4 * para['T_trans'])
+        num_trans += 4
+        max_dis = 0
+        for each_move in move:
+            num_move += 1
+            x1, y1 = each_move[1][0],each_move[1][1]
+            x2, y2 = each_move[2][0],each_move[2][1]
+            dis = (abs(x2-x1)*para['AOD_width'])**2 + (abs(y2-y1)*para['AOD_height'])**2
+            if dis > max_dis:
+                max_dis = dis
+        max_dis = math.sqrt(max_dis)
+        all_move_dis += max_dis
+        t_total += (max_dis/para['Move_speed'])
+        t_move += (max_dis/para['Move_speed'])
+
+    t_idle = num_q * t_total - gate_num * para['T_cz']
+    Fidelity = math.exp(-t_idle/para['T_eff']) * (para['F_cz']**gate_num) * (para['F_trans'] ** num_trans)
+    move_fidelity = math.exp(-t_move/para['T_eff'])
+    return t_idle, Fidelity, move_fidelity, t_total, num_trans, num_move, all_move_dis
 
 def get_embeddings(partition_gates, coupling_graph, num_q, arch_size, Rb, initial_mapping=None):
     embeddings = []
@@ -439,6 +483,9 @@ def write_data(data, path, file_name):
         for sublist in data:
         # 将每个子列表转换为 JSON 格式的字符串，并写入文件
             file.write(json.dumps(sublist) + '\n')
+def write_data_json(data, path, file_name):
+    with open(os.path.join(path,file_name), 'w') as file:
+        file.write(json.dumps(data) + '\n')
 
 def read_data(path, file_name):
     with open(os.path.join(path,file_name), 'r') as file:
