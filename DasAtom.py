@@ -83,6 +83,8 @@ class SingleFileProcessor:
         # 1) Create circuit from QASM, then extract 2-qubit gates and DAG
         qasm_circuit = CreateCircuitFromQASM(self.qasm_filename, self.circuit_folder)
         two_qubit_gates_list = get_2q_gates_list(qasm_circuit)
+        if not two_qubit_gates_list:
+            raise ValueError(f"a wrong circuit which have no cz in {self.qasm_filename},\n{qasm_circuit.draw()}")
         qc_object, dag_object = gates_list_to_QC(two_qubit_gates_list)
 
         # 2) Determine key architecture parameters
