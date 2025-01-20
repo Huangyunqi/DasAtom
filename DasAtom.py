@@ -139,7 +139,7 @@ class SingleFileProcessor:
         # 9) Optionally save a per-file XLSX
         save_file_name = os.path.join(
             self.result_path,
-            f'{self.qasm_filename}_rb{self.interaction_radius}_grid{grid_size}_metrics.xlsx'
+            f'{self.qasm_filename}_rb{self.interaction_radius:.3g}.xlsx'
         )
         for item in self.file_process_log:
             ws.append(item)
@@ -433,7 +433,7 @@ class DasAtom:
         If None, process all.
         """
         # Prepare sub-folders
-        result_subfolder = os.path.join(self.results_folder, f"Rb{self.interaction_radius}Re{self.extended_radius}")
+        result_subfolder = os.path.join(self.results_folder, f"Rb{self.interaction_radius:.3g}Re{self.extended_radius:.3g}")
         embeddings_subfolder = os.path.join(result_subfolder, "embeddings")
         partitions_subfolder = os.path.join(result_subfolder, "partitions")
         os.makedirs(embeddings_subfolder, exist_ok=True)
@@ -510,7 +510,7 @@ if __name__ == "__main__":
 
     parser.add_argument("benchmark_name", type=str, help="Name of the benchmark.")
     parser.add_argument("circuit_folder", type=str, help="Path to the folder containing .qasm files.")
-    parser.add_argument("--interaction_radius", type=int, default=math.sqrt(2), help="Interaction radius (default=2).")
+    parser.add_argument("--interaction_radius", type=int, default= 2, help="Interaction radius (default=2).")
     parser.add_argument("--results_folder", type=str, help="Folder where results are stored (default: res/{benchmark_name}).")
     parser.add_argument("--read_embeddings", action="store_true", default=False, help="Read precomputed embeddings/partitions.")
     parser.add_argument("--padused", type=bool, default=False, help="Whether to use a specialized embedding tool (not used in code).")
