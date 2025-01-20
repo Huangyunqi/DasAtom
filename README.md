@@ -8,8 +8,8 @@ This repository accompanies the research paper [**"DasAtom: A Divide-and-Shuttle
 1. **Clone the Repository:**
 
    ```bash
-   git clone git@github.com:Huangyunqi/NAQCT.git
-   cd NAQCT
+   git clone https://github.com/Huangyunqi/DasAtom.git
+   cd DasAtom
    ```
 
 2. **Create and Activate Virtual Environment:**
