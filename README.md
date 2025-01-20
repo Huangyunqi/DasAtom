@@ -8,8 +8,8 @@ This repository accompanies the research paper [**"DasAtom: A Divide-and-Shuttle
 1. **Clone the Repository:**
 
    ```bash
-   git clone git@github.com:Huangyunqi/NAQCT.git
-   cd NAQCT
+   git clone https://github.com/Huangyunqi/DasAtom.git
+   cd DasAtom
    ```
 
 2. **Create and Activate Virtual Environment:**
@@ -54,4 +54,4 @@ The `Makefile` automates two tasks:
 - Executes the `tetris` script, logging the output to `tetris.log`, which processes the benchmarks from `Q_Tetris`.
 
 
-If you have any questions or issues, please refer to us.
+If you have any questions or issues, please contact to us.

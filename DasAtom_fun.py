@@ -9,26 +9,23 @@ import json
 
 from qiskit import qasm2, transpile, QuantumCircuit, QuantumRegister
 from qiskit.converters import dag_to_circuit, circuit_to_dag
-
+from qiskit.circuit import library
 import copy
 from copy import deepcopy
+
+custom = [
+    qasm2.CustomInstruction("p",num_params= 1, num_qubits=1 ,constructor=library.PhaseGate, builtin=True),
+]
 
 def CreateCircuitFromQASM(file, path):
     filePath = os.path.join(path,file)
     # print(filePath)
-    QASM_file = open(filePath, 'r')
-    iter_f = iter(QASM_file)
-    QASM = ''
-    for line in iter_f:
-        QASM = QASM + line
-    cir = QuantumCircuit.from_qasm_str(QASM)
-    QASM_file.close
-
+    cir = qasm2.load(filePath, custom_instructions=custom)
     gates_in_circuit = {op[0].name for op in cir.data}
     allowed_basis_gates = {'cz', 'h', 's', 't', 'rx', 'ry', 'rz'}
     # Check if there are any disallowed gates by checking the difference between sets
     if gates_in_circuit - allowed_basis_gates:
-        cir = transpile(cir, basis_gates=list(allowed_basis_gates))
+        cir = transpile(cir, basis_gates=list(allowed_basis_gates),optimization_level=0)
     return cir
 
 

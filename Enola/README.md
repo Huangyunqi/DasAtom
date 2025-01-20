@@ -20,7 +20,5 @@ The `route.py` file is used to generate the movement sequences. We streamlined t
 
 Unlike the Enola setup, our implementation does not involve dual movements, which reduces the number of possible movements. Consequently, we did not use movement windows.
 
-By integrating `route.py` with `codegen.py` and `animation.py`, we can visualize the movement sequences.
-
 ## Contact
 For more information on the original code or our modifications, please contact us.
