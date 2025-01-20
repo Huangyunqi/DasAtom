@@ -54,4 +54,4 @@ The `Makefile` automates two tasks:
 - Executes the `tetris` script, logging the output to `tetris.log`, which processes the benchmarks from `Q_Tetris`.
 
 
-If you have any questions or issues, please refer to us.
+If you have any questions or issues, please contact to us.
