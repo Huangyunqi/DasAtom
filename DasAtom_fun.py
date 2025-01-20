@@ -25,7 +25,7 @@ def CreateCircuitFromQASM(file, path):
     allowed_basis_gates = {'cz', 'h', 's', 't', 'rx', 'ry', 'rz'}
     # Check if there are any disallowed gates by checking the difference between sets
     if gates_in_circuit - allowed_basis_gates:
-        cir = transpile(cir, basis_gates=list(allowed_basis_gates),optimization_level=3)
+        cir = transpile(cir, basis_gates=list(allowed_basis_gates),optimization_level=0)
     return cir
 
 
