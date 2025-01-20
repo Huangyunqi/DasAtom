@@ -294,9 +294,6 @@ class SingleFileProcessor:
             num_qubits, embeddings, partitioned_gates, [grid_size, grid_size]
         )
         router.run()
-        router.save_program(
-            os.path.join(self.embeddings_path, f"{self.benchmark_name}_{num_qubits}.json")
-        )
 
         # Generate the parallel gates for each partition
         for i in range(len(partitioned_gates)):

@@ -1,12 +1,6 @@
-import json
 import math
-import copy
-from .codegen import CodeGen, global_dict
 from networkx import maximal_independent_set, Graph
-from typing import Sequence, Mapping, Any
 
-
-global_dict["full_code"] = True
 
 def compatible_2D(a: list[int], b: list[int]) -> bool:
     """
@@ -118,35 +112,6 @@ def get_movements(current_map: list, next_map: list, window_size=None) -> map:
             movements[qubit] = move_details
     return movements
 
-def map_to_layer(map: list) -> dict[str, list]:
-    """
-    Converts a list of qubit positions to a layer dictionary.
-
-    Parameters:
-    map (list): list of qubit positions.
-
-    Returns:
-    map: Dictionary representing the layer configuration.
-    """
-    return {
-        "qubits": [{
-            "id": i,
-            "a": 0,
-            "x": map[i][0],
-            "y": map[i][1],
-            "c": map[i][0],
-            "r": map[i][1],
-        } for i in range(len(map))],
-        "gates": []
-    }
-
-def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
-    res = []
-    for i in range(len(gate_list)-1,-1,-1):
-        assert len(gate_list[i]) == 2
-        res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
-    return res
-
 class QuantumRouter:
     def __init__(self, num_qubits: int, embeddings: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
         """
@@ -196,40 +161,6 @@ class QuantumRouter:
             f"currently, it is {arch_size[0] * arch_size[1]}."
         )
 
-    def initialize_program(self) -> None:
-        """
-        Initialize the program with the initial layer and gates.
-        """
-        layers = [map_to_layer(self.embeddings[0])]
-        initial_layer = map_to_layer(self.embeddings[0])
-        initial_layer["gates"] = gates_in_layer(self.gate_list[0])
-        layers.append(initial_layer)
-        return self.generate_program(layers)
-
-    def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
-        """
-        Generate the program from the given layers.
-        
-        Parameters:
-        layers (list[dict[str, Any]]): list of layers.
-        
-        Returns:
-        str: The generated program.
-        """
-        data = {
-            "no_transfer": False,
-            "layers": layers,
-            "n_q": self.num_qubits,
-            "g_q": self.gate_list,
-            "n_x": self.arch_size[0],
-            "n_y": self.arch_size[1],
-            "n_r": self.arch_size[0],
-            "n_c": self.arch_size[1]
-        }
-        code_gen = CodeGen(data)
-        program = code_gen.builder(no_transfer=False)
-        return program.emit_full()
-
     def process_all_embeddings(self) -> None:
         """
         Process all embeddings to resolve movements and update the program.
@@ -247,7 +178,6 @@ class QuantumRouter:
         movements (dict): Dictionary of qubit movements.
         violations (list): list of violations to be resolved.
         sorted_keys (list): list of qubit keys sorted based on priority.
-        layer (dict): Dictionary representing the current layer configuration.
 
         Returns:
         tuple: remaining movements, unresolved violations and movement sequence to finish movement this time
@@ -325,39 +255,6 @@ class QuantumRouter:
                 if not compatible_2D(remained_mov_map[sorted_movements[i]], remained_mov_map[sorted_movements[j]]):
                     violations.append((sorted_movements[i], sorted_movements[j]))
         return violations
-
-    def update_layer(self, layer, movements):
-        new_layer = copy.deepcopy(layer)
-        for qubit, current_pos, next_pos in movements:
-            assert layer["qubits"][qubit]["id"] == qubit, "some error happen during layer generation"
-            assert layer["qubits"][qubit]["x"] == current_pos[0], f"layer have problem with location of qubit {qubit}, in x-axis"
-            assert layer["qubits"][qubit]["y"] == current_pos[1], f"layer have problem with location of qubit {qubit}, in y-axis"
-
-            new_layer["qubits"][qubit]["a"] = 1
-            layer["qubits"][qubit]["x"] = next_pos[0]
-            layer["qubits"][qubit]["y"] = next_pos[1]
-            layer["qubits"][qubit]["c"] = next_pos[0]
-            layer["qubits"][qubit]["r"] = next_pos[1]
-        return new_layer
-
-    def save_program(self, filename: str) -> None:
-        """
-        Save the generated program to a file.
-        Parameters:
-        filename (str): The filename to save the program.
-        """
-        assert filename.endswith('.json'), "program should be saved to a .json file"
-        assert len(self.movement_list) == len(self.embeddings)-1, "before generate program, movement should be finished"
-        program = self.initialize_program()
-        for i,movements in enumerate(self.movement_list):
-            layers = []
-            layer = map_to_layer(self.embeddings[i])
-            for mov in movements:
-                layers.append(self.update_layer(layer,mov))
-            layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
-            program += self.generate_program(layers)[2:]
-        with open(filename, 'w') as file:
-            json.dump(program, file)
 
     def run(self) -> None:
         """
