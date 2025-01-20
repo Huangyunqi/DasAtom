@@ -83,8 +83,7 @@ class SingleFileProcessor:
         # 1) Create circuit from QASM, then extract 2-qubit gates and DAG
         qasm_circuit = CreateCircuitFromQASM(self.qasm_filename, self.circuit_folder)
         two_qubit_gates_list = get_2q_gates_list(qasm_circuit)
-        if not two_qubit_gates_list:
-            raise ValueError(f"a wrong circuit which have no cz in {self.qasm_filename},\n{qasm_circuit.draw()}")
+        assert two_qubit_gates_list, f"a wrong circuit which have no cz in {self.qasm_filename}"
         qc_object, dag_object = gates_list_to_QC(two_qubit_gates_list)
 
         # 2) Determine key architecture parameters
@@ -156,7 +155,7 @@ class SingleFileProcessor:
             fidelity,
             move_fidelity,
             len(movements_list),
-            num_moves * 4,           # Could be replaced with a more descriptive meaning if needed
+            num_moves * 4,           # num of transfer
             num_moves,
             total_move_distance,
             len(merged_parallel_gates),
@@ -367,8 +366,7 @@ class DasAtom:
         self.interaction_radius = interaction_radius
         self.extended_radius = 2 * self.interaction_radius
 
-        if not os.path.exists(circuit_folder):
-            raise FileNotFoundError(f"Directory not found: {circuit_folder}")
+        assert os.path.exists(circuit_folder), f"Directory not found: {circuit_folder}"
         self.circuit_folder = circuit_folder
 
         # Default results folder: 'res/{benchmark_name}'
