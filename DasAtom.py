@@ -3,7 +3,7 @@ import time
 import math
 from openpyxl import Workbook
 import warnings
-from Enola.route import QuantumRouter
+from Enola.route import QuantumRouter, compatible_2D
 from DasAtom_fun import *
 import argparse
 
@@ -31,7 +31,8 @@ class SingleFileProcessor:
         read_embeddings: bool,
         save_partitions_and_embeddings: bool,
         save_circuit_results: bool,
-        save_benchmark_results: bool
+        save_benchmark_results: bool,
+        if_verify:bool = False
     ):
         """
         Initialize the processor with file-specific and benchmark-wide parameters.
@@ -48,6 +49,7 @@ class SingleFileProcessor:
         :param save_partitions_and_embeddings: Whether to save newly created partitions/embeddings to disk.
         :param save_circuit_results: Whether to save circuit-level results (xlsx).
         :param save_benchmark_results: Whether to save the overall benchmark-level results.
+        :param if_verify: Whether to verify the whole process.
         """
         self.qasm_filename = qasm_filename
         self.circuit_folder = circuit_folder
@@ -61,10 +63,116 @@ class SingleFileProcessor:
         self.save_partitions_and_embeddings = save_partitions_and_embeddings
         self.save_circuit_results = save_circuit_results
         self.save_benchmark_results = save_benchmark_results
+        self.if_verify = if_verify
 
         # Used to store logs for the final XLSX per file
         self.file_process_log = []
+        
+        
+    def validate_partition(self, partitioned_gates, embeddings) -> bool:
+        """
+        Verify the partition.
+        
+        :param partitioned_gates: A three-layer nested list where:
+            - First layer: Different execution partitions.
+            - Second layer: Groups of gates executed together.
+            - Third layer: Individual gate operations.
+        :param embeddings: A three-layer nested list where:
+            - First layer: Different embeddings.
+            - Second layer: The map of qubits.
+            - Third layer: (x, y) coordinates of the ith qubit.
+        :return: True if verification passes, otherwise raises an assertion error.
+        """
+        
+        # Ensure the number of execution partitions matches the number of embeddings
+        assert len(partitioned_gates) == len(embeddings), (
+            f"Mismatch in partition layers: expected {len(embeddings)}, "
+            f"but got {len(partitioned_gates)}."
+        )
 
+        # Ensure all embeddings have the same qubit count
+        qubit_num = len(embeddings[0])
+        for embedding in embeddings:
+            assert len(embedding) == qubit_num, (
+                f"Inconsistent qubit counts: expected {qubit_num}, "
+                f"but got {len(embedding)}."
+            )
+
+        # Verify each gate respects the embedding and interaction constraints
+        for layer_idx, execution_layer in enumerate(partitioned_gates):
+            embedding = embeddings[layer_idx]  # Get the corresponding embedding for this layer
+            
+            for gate in execution_layer:
+                
+                q0, q1 = gate
+                
+                # Ensure gate qubits are within bounds
+                assert 0 <= q0 < qubit_num and 0 <= q1 < qubit_num, (
+                    f"Invalid qubit indices: q0={q0}, q1={q1}. "
+                    f"Must be in range [0, {qubit_num - 1}]."
+                )
+
+                # Get qubit positions
+                loc_q0 = embedding[q0]
+                loc_q1 = embedding[q1]
+
+                # Ensure qubits respect interaction distance
+                distance = euclidean_distance(loc_q0, loc_q1)
+                assert distance <= self.interaction_radius, (
+                    f"Qubits {q0} and {q1} exceed interaction radius. "
+                    f"Distance = {distance}, Max allowed = {self.interaction_radius}."
+                )
+
+        return True  # If no assertion fails, the partition is valid.
+
+    def validate_movements(self, embeddings, movements_list) -> bool:
+        """
+        Validate qubit movements between embeddings.
+        
+        :param embeddings: A three-layer nested list where:
+            - First layer: Different embeddings.
+            - Second layer: The map of qubits.
+            - Third layer: (x, y) coordinates of the ith qubit.
+            
+        :param movements_list: A three-layer nested list where:
+            - First layer: Different embeddings.
+            - Second layer: The move sequences during this movement.
+            - Third layer: [qubit, (origin_x, origin_y), (next_x, next_y)].
+        
+        :return: True if validation passes, otherwise raises an assertion error.
+        """
+
+        # Ensure that the number of movements aligns with embeddings (n movements for n+1 embeddings)
+        assert len(embeddings) == len(movements_list) + 1, (
+            f"Mismatch in movement count: expected {len(embeddings) - 1}, "
+            f"but got {len(movements_list)}."
+        )
+
+        # Validate each movement step
+        for i, movement in enumerate(movements_list):
+            current_embedding = embeddings[i]
+            next_embedding = embeddings[i + 1]
+
+            for sequence in movement:
+                for j, (qubit, (ox, oy), (nx, ny)) in enumerate(sequence):
+                    move_j = [ox, oy, nx, ny]
+
+                    # Ensure qubits are moving from and to the correct locations
+                    assert (ox, oy) == current_embedding[qubit], (
+                        f"Qubit {qubit} mismatch: expected {current_embedding[qubit]}, but got ({ox}, {oy})."
+                    )
+                    assert (nx, ny) == next_embedding[qubit], (
+                        f"Qubit {qubit} mismatch after move: expected {next_embedding[qubit]}, but got ({nx}, {ny})."
+                    )
+
+                    # Check compatibility of moves within the same sequence
+                    for k in range(j + 1, len(sequence)):
+                        other_move = sequence[k]
+                        compatible_2D(move_j, [other_move[1][0], other_move[1][1], other_move[2][0], other_move[2][1]])
+
+        return True  # If no assertion fails, movements are valid.
+
+        
     def process_qasm_file(self):
         """
         Main entry point to process the single QASM file. This function:
@@ -271,6 +379,16 @@ class SingleFileProcessor:
                 self.file_process_log.append(["Extended positions", extended_positions])
                 grid_size += len(extended_positions)
 
+            if self.if_verify:
+                try:
+                    self.validate_partition(partitioned_gates, embeddings)
+                except AssertionError as e:
+                    print(f"Verification failed: {e}")  # Or use logging
+                    raise
+                except Exception as e:
+                    print(f"Unexpected error during verification: {e}")
+                    raise
+
             return embeddings, grid_size
 
     def _compute_gates_and_movements(self, num_qubits, partitioned_gates, embeddings, coupling_graph, grid_size):
@@ -294,6 +412,16 @@ class SingleFileProcessor:
             num_qubits, embeddings, partitioned_gates, [grid_size, grid_size]
         )
         router.run()
+        if self.if_verify:
+            try:
+                self.validate_movements(embeddings, router.movement_list)
+            except AssertionError as e:
+                print(embeddings, router.movement_list)
+                print(f"Verification failed: {e}")  # Or use logging
+                raise
+            except Exception as e:
+                print(f"Unexpected error during verification: {e}")
+                raise 
         router.save_program(
             os.path.join(self.embeddings_path, f"{self.benchmark_name}_{num_qubits}.json")
         )
@@ -348,7 +476,8 @@ class DasAtom:
         read_embeddings: bool = False,
         save_partitions_and_embeddings: bool = True,
         save_circuit_results: bool = True,
-        save_benchmark_results: bool = True
+        save_benchmark_results: bool = True,
+        if_verify: bool = False
     ):
         """
         Initialize the multi-file processor with user-provided settings.
@@ -361,6 +490,7 @@ class DasAtom:
         :param save_partitions_and_embeddings: If True, save newly computed partitions/embeddings to JSON.
         :param save_circuit_results: If True, save per-circuit XLSX logs.
         :param save_benchmark_results: If True, save a master XLSX for all circuits.
+        :param if_verify: Whether to verify the whole process.
         """
         self.benchmark_name = benchmark_name
         self.interaction_radius = interaction_radius
@@ -388,6 +518,7 @@ class DasAtom:
         self.save_partitions_and_embeddings = save_partitions_and_embeddings
         self.save_circuit_results = save_circuit_results
         self.save_benchmark_results = save_benchmark_results
+        self.if_verify = if_verify
 
     @staticmethod
     def _extract_numeric_suffix(filename: str):
@@ -468,6 +599,8 @@ class DasAtom:
         for idx in file_indices:
             qasm_file = self.qasm_files[idx]
             print(f"Processing: {qasm_file}")
+            if self.if_verify:
+                print(f"Also verify the result of {qasm_file}")
 
             processor = SingleFileProcessor(
                 qasm_filename=qasm_file,
@@ -481,7 +614,8 @@ class DasAtom:
                 read_embeddings=self.read_embeddings,
                 save_partitions_and_embeddings=self.save_partitions_and_embeddings,
                 save_circuit_results=self.save_circuit_results,
-                save_benchmark_results=self.save_benchmark_results
+                save_benchmark_results=self.save_benchmark_results,
+                if_verify= self.if_verify
             )
 
             # Returns one row of aggregated stats
@@ -520,6 +654,7 @@ if __name__ == "__main__":
     parser.add_argument("--no_save_circuit_results", action="store_false", dest="save_circuit_results", help="Do not save circuit-level logs.")
     parser.add_argument("--save_benchmark_results", action="store_true", default=True, help="Save summary XLSX at benchmark-level (default=True).")
     parser.add_argument("--no_save_benchmark_results", action="store_false", dest="save_benchmark_results", help="Do not save summary XLSX.")
+    parser.add_argument("--verify", type=bool, default=True, help="Whether to verify the whole process.")
 
     args = parser.parse_args()
 
@@ -531,6 +666,7 @@ if __name__ == "__main__":
         read_embeddings=args.read_embeddings,
         save_partitions_and_embeddings=args.save_embeddings,
         save_circuit_results=args.save_circuit_results,
-        save_benchmark_results=args.save_benchmark_results
+        save_benchmark_results=args.save_benchmark_results,
+        if_verify = args.verify
     )
     das_atom.process_all_files()
