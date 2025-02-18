@@ -72,6 +72,12 @@ def get_layer_gates(dag):
     return gate_layer_list
 
 def partition_from_DAG(dag, coupling_graph):
+    """
+    return: A three-layer nested list where:
+        - First layer: Different execution partitions.
+        - Second layer: Groups of gates executed together.
+        - Third layer: Individual gate operations.
+    """
     gate_layer_list = get_layer_gates(dag)
     num_of_gate = 0
     last_index = 0
