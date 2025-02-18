@@ -340,6 +340,16 @@ class QuantumRouter:
             layer["qubits"][qubit]["r"] = next_pos[1]
         return new_layer
 
+    def final_layer(self, layer, movements):
+        new_layer = copy.deepcopy(layer)
+        for qubit, current_pos, next_pos in movements:
+            new_layer["qubits"][qubit]["x"] = next_pos[0]
+            new_layer["qubits"][qubit]["y"] = next_pos[1]
+            new_layer["qubits"][qubit]["c"] = next_pos[0]
+            new_layer["qubits"][qubit]["r"] = next_pos[1]
+
+        return new_layer
+
     def save_program(self, filename: str) -> None:
         """
         Save the generated program to a file.
@@ -354,6 +364,7 @@ class QuantumRouter:
             layer = map_to_layer(self.embeddings[i])
             for mov in movements:
                 layers.append(self.update_layer(layer,mov))
+            layers.append(self.final_layer(layer,movements[-1]))
             layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
             program += self.generate_program(layers)[2:]
         with open(filename, 'w') as file:
