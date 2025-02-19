@@ -1970,7 +1970,7 @@ class Animator():
         )
 
         animation_file = dir + (code_file_name.replace(
-            '_code_full.json', '.mp4')).split('/')[-1]
+            '.json', '.mp4')).split('/')[-1]
         anim.save(animation_file, writer=FFMpegWriter(FPS))
 
     def read_files(self, code_file: str):
@@ -2109,7 +2109,7 @@ class Animator():
         return
 
     def update(self, f: int):  # f is the frame
-        print(f"update {f}")
+        # print(f"update {f}")
         if f < self.keyframes[0]:
             return
         for i, inst in enumerate(self.code):
@@ -2130,6 +2130,9 @@ class Animator():
     def update_rydberg(self, f: int, inst: dict):
         edges = [(g['q0'], g['q1']) for g in inst['gates']]
         if f == inst['f_begin']:
+            print(0)
+            print(inst['gates'])
+            self.clear_patches()
             self.title.set_text(inst['name'])
 
             # find the qubits involved in 2Q gates and annotate their ids
@@ -2165,6 +2168,7 @@ class Animator():
             )
 
         if f == inst['f_end']:
+            print(2)
             # clean up the annotations and blue background at finishing frame
             self.ax.set_facecolor('w')
             for text in self.texts:
@@ -2312,8 +2316,6 @@ if __name__ == "__main__":
     
     filename = args.input_file.split("/")[-1]
     filename = filename.split("_")
-    num_qubit = int(filename[1])
-    trial = int(filename[2])
 
 
 
@@ -2325,5 +2327,5 @@ if __name__ == "__main__":
         real_speed=args.realSpeed,
         show_graph=False,
         edges=[],
-        dir=args.dir if args.dir else './results/animations/'
+        dir=args.dir if args.dir else ''
     )

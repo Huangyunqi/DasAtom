@@ -147,8 +147,15 @@ def gates_in_layer(gate_list:list[list[int]])->list[dict[str, int]]:
         res.append({'id':i,'q0':gate_list[i][0],'q1':gate_list[i][1]})
     return res
 
+def para_gate_layer(embedding, gate_layer):
+    layers = []
+    for gates in gate_layer:
+        initial_layer = map_to_layer(embedding)
+        initial_layer["gates"] = gates_in_layer(gates)
+        layers.append(initial_layer)
+    return layers
 class QuantumRouter:
-    def __init__(self, num_qubits: int, embeddings: list[list[list[int]]], gate_list: list[list[int]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
+    def __init__(self, num_qubits: int, embeddings: list[list[list[int]]], gate_list: list[list[list[int]]], arch_size: list[int], routing_strategy: str = "maximalis") -> None:
         """
         Initialize the QuantumRouter object with the given parameters.
         
@@ -201,9 +208,7 @@ class QuantumRouter:
         Initialize the program with the initial layer and gates.
         """
         layers = [map_to_layer(self.embeddings[0])]
-        initial_layer = map_to_layer(self.embeddings[0])
-        initial_layer["gates"] = gates_in_layer(self.gate_list[0])
-        layers.append(initial_layer)
+        layers.extend(para_gate_layer(self.embeddings[0],self.gate_list[0]))
         return self.generate_program(layers)
 
     def generate_program(self, layers: list[dict[str, Any]]) -> Sequence[Mapping[str, Any]]:
@@ -364,8 +369,7 @@ class QuantumRouter:
             layer = map_to_layer(self.embeddings[i])
             for mov in movements:
                 layers.append(self.update_layer(layer,mov))
-            layers.append(self.final_layer(layer,movements[-1]))
-            layers[-1]["gates"] = gates_in_layer(self.gate_list[i+1])
+            layers.extend(para_gate_layer(self.embeddings[i+1],self.gate_list[i+1]))
             program += self.generate_program(layers)[2:]
         with open(filename, 'w') as file:
             json.dump(program, file)

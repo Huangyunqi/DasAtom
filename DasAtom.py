@@ -479,9 +479,29 @@ class SingleFileProcessor:
         movement_operations = []
         merged_parallel_gates = []
 
+        # Generate the parallel gates for each partition
+        for i in range(len(partitioned_gates)):
+            gates = get_parallel_gates(
+                partitioned_gates[i],
+                coupling_graph,
+                embeddings[i],
+                self.extended_radius
+            )
+            parallel_gate_groups.append(gates)
+
+        if self.if_verify:
+            try:
+                self.validate_parallel_gates(parallel_gate_groups, embeddings)
+            except AssertionError as e:
+                print(f"Verification failed: {e}")  # Or use logging
+                raise
+            except Exception as e:
+                print(f"Unexpected error during verification: {e}")
+                raise
+
         # QuantumRouter: figure out the qubit re-locations from partition N to N+1
         router = QuantumRouter(
-            num_qubits, embeddings, partitioned_gates, [grid_size, grid_size]
+            num_qubits, embeddings, parallel_gate_groups, [grid_size, grid_size]
         )
         router.run()
         if self.if_verify:
@@ -497,17 +517,7 @@ class SingleFileProcessor:
         router.save_program(
             os.path.join(self.embeddings_path, f"{self.benchmark_name}_{num_qubits}.json")
         )
-
-        # Generate the parallel gates for each partition
-        for i in range(len(partitioned_gates)):
-            gates = get_parallel_gates(
-                partitioned_gates[i],
-                coupling_graph,
-                embeddings[i],
-                self.extended_radius
-            )
-            parallel_gate_groups.append(gates)
-
+        
         # Append parallel gates and movement sequences
         for i in range(len(embeddings) - 1):
             # Log parallel gate group for partition i
@@ -527,15 +537,6 @@ class SingleFileProcessor:
                 self.file_process_log.append([str(g) for g in g_list])
                 merged_parallel_gates.append(g_list)
 
-        if self.if_verify:
-            try:
-                self.validate_parallel_gates(parallel_gate_groups, embeddings)
-            except AssertionError as e:
-                print(f"Verification failed: {e}")  # Or use logging
-                raise
-            except Exception as e:
-                print(f"Unexpected error during verification: {e}")
-                raise
         return parallel_gate_groups, movement_operations, merged_parallel_gates
 
 
