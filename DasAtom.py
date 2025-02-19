@@ -64,12 +64,41 @@ class SingleFileProcessor:
         self.save_circuit_results = save_circuit_results
         self.save_benchmark_results = save_benchmark_results
         self.if_verify = if_verify
+        self.qubit_num = 0
 
         # Used to store logs for the final XLSX per file
         self.file_process_log = []
         
         
-    def validate_partition(self, partitioned_gates, embeddings) -> bool:
+    def validate_embeddings(self, embeddings):
+        """
+        Validate consistency and uniqueness of embeddings.
+        
+        :param embeddings: A three-layer nested list where:
+            - First layer: Different embeddings.
+            - Second layer: The map of qubits.
+            - Third layer: (x, y) coordinates of the ith qubit.
+        
+        :return: True if validation passes, otherwise raises an assertion error.
+        """
+
+        for idx, embedding in enumerate(embeddings):
+            # Ensure all embeddings have the expected qubit count
+            assert len(embedding) == self.qubit_num, (
+                f"Inconsistent qubit count at embedding index {idx}: "
+                f"expected {self.qubit_num}, but got {len(embedding)}."
+            )
+
+            # Ensure all qubit positions are unique
+            unique_positions = set(embedding)
+            assert len(embedding) == len(unique_positions), (
+                f"Duplicate qubit positions found in embedding index {idx}. "
+                f"Expected unique locations but found duplicates: {embedding}."
+            )
+
+        return True  # If no assertion fails, embeddings are valid.
+        
+    def validate_partition_embedding(self, partitioned_gates, embeddings) -> bool:
         """
         Verify the partition.
         
@@ -90,14 +119,6 @@ class SingleFileProcessor:
             f"but got {len(partitioned_gates)}."
         )
 
-        # Ensure all embeddings have the same qubit count
-        qubit_num = len(embeddings[0])
-        for embedding in embeddings:
-            assert len(embedding) == qubit_num, (
-                f"Inconsistent qubit counts: expected {qubit_num}, "
-                f"but got {len(embedding)}."
-            )
-
         # Verify each gate respects the embedding and interaction constraints
         for layer_idx, execution_layer in enumerate(partitioned_gates):
             embedding = embeddings[layer_idx]  # Get the corresponding embedding for this layer
@@ -107,9 +128,9 @@ class SingleFileProcessor:
                 q0, q1 = gate
                 
                 # Ensure gate qubits are within bounds
-                assert 0 <= q0 < qubit_num and 0 <= q1 < qubit_num, (
+                assert 0 <= q0 < self.qubit_num and 0 <= q1 < self.qubit_num, (
                     f"Invalid qubit indices: q0={q0}, q1={q1}. "
-                    f"Must be in range [0, {qubit_num - 1}]."
+                    f"Must be in range [0, {self.qubit_num - 1})."
                 )
 
                 # Get qubit positions
@@ -172,7 +193,56 @@ class SingleFileProcessor:
 
         return True  # If no assertion fails, movements are valid.
 
+    def validate_parallel_gates(self, parallel_gate_groups, embeddings) -> bool:
+        """
+        Validate parallel gate execution based on embeddings.
         
+        :param parallel_gate_groups: A four-layer nested list where:
+            - First layer: Different embedding maps.
+            - Second layer: Different gate layers.
+            - Third layer: Parallel gates.
+            - Fourth layer: [i, j] pairs representing individual gate operations.
+        
+        :param embeddings: A three-layer nested list where:
+            - First layer: Different embeddings.
+            - Second layer: The map of qubits.
+            - Third layer: (x, y) coordinates of the ith qubit.
+        
+        :return: True if validation passes, otherwise raises an assertion error.
+        """
+        
+        for layer_idx, gate_group in enumerate(parallel_gate_groups):
+            embedding = embeddings[layer_idx]  # Get the corresponding embedding for this layer
+            
+            for execution_layer in gate_group:
+                locs = []
+                locs = []
+                
+                for gate in execution_layer:
+                    q0, q1 = gate
+                    
+                    # Ensure gate qubits are within valid range
+                    assert 0 <= q0 < self.qubit_num and 0 <= q1 < self.qubit_num, (
+                        f"Invalid qubit indices: q0={q0}, q1={q1}. "
+                        f"Must be in range [0, {self.qubit_num - 1}]."
+                    )
+                    
+                    # Get qubit positions
+                    locs.append(embedding[q0])
+                    locs.append(embedding[q1])
+                
+                # Ensure all qubits in `loc` are sufficiently spaced
+                for i in range(len(locs)):
+                    for j in range(i+2-i%2, len(locs)):
+                        dist = euclidean_distance(locs[i], locs[j])
+                        assert dist >= self.extended_radius, (
+                            f"Qubit overlap issue in layer {layer_idx}: "
+                            f"Distance between {locs[i]} and {locs[j]} = {dist}, "
+                            f"but should be >= {self.extended_radius}."
+                        )
+        
+        return True  # If no assertion fails, gates are valid.
+   
     def process_qasm_file(self):
         """
         Main entry point to process the single QASM file. This function:
@@ -196,6 +266,7 @@ class SingleFileProcessor:
 
         # 2) Determine key architecture parameters
         num_qubits, num_cz_gates, grid_size = self._compute_architecture_parameters(two_qubit_gates_list)
+        self.qubit_num = num_qubits
 
         # 3) Generate coupling graph based on the interaction radius
         coupling_graph = self._generate_coupling_graph(grid_size)
@@ -381,7 +452,8 @@ class SingleFileProcessor:
 
             if self.if_verify:
                 try:
-                    self.validate_partition(partitioned_gates, embeddings)
+                    self.validate_embeddings(embeddings)
+                    self.validate_partition_embedding(partitioned_gates, embeddings)
                 except AssertionError as e:
                     print(f"Verification failed: {e}")  # Or use logging
                     raise
@@ -455,6 +527,15 @@ class SingleFileProcessor:
                 self.file_process_log.append([str(g) for g in g_list])
                 merged_parallel_gates.append(g_list)
 
+        if self.if_verify:
+            try:
+                self.validate_parallel_gates(parallel_gate_groups, embeddings)
+            except AssertionError as e:
+                print(f"Verification failed: {e}")  # Or use logging
+                raise
+            except Exception as e:
+                print(f"Unexpected error during verification: {e}")
+                raise
         return parallel_gate_groups, movement_operations, merged_parallel_gates
 
 
